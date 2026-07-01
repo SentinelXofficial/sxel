@@ -111,7 +111,7 @@ Examples:
   sxel -u "http://target.com" --crawl --ws -o report.html
   sxel -u "http://target.com" --all --html-output report.html --json-output r.json
   sxel -u "http://target.com" --sql-only --blind --proxy http://127.0.0.1:8080
-  sxsc -l targets.txt --all --json-output results.json --list-concurrency 5
+  sxel -l targets.txt --all --json-output results.json --list-concurrency 5
   sxel -u "http://target.com" -H "Authorization: Bearer xxx" -H "X-Api-Key: yyy"
   sxel -u "http://target.com" --jwt --cookie "session=abc; token=ey..."
   sxel -u "http://target.com" --graphql --idor --file-upload
@@ -789,12 +789,12 @@ func writeHTMLReport(path string, results []core.ScanResult) {
 		return
 	}
 	defer f.Close()
-	io.WriteString(f, `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>sxsc Scan Report</title>
+	io.WriteString(f, `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>sxel Scan Report</title>
 <style>body{font-family:monospace;background:#111;color:#0f0;padding:20px}h1{color:#0ff}
 .finding{border-bottom:1px solid #333;padding:8px 0}.sev-CRITICAL{color:#f0f}.sev-HIGH{color:#f00}
 .sev-MEDIUM{color:#ff0}.sev-LOW{color:#0af}.sev-INFO{color:#888}
 table{width:100%;border-collapse:collapse}td{padding:4px 8px;vertical-align:top}
-</style></head><body><h1>sxsc Scan Report</h1><p>Findings: `+
+</style></head><body><h1>sxel Scan Report</h1><p>Findings: `+
 		fmt.Sprintf("%d", len(results))+`</p><table>`)
 	for _, r := range results {
 		cls := "sev-" + r.Severity
@@ -852,7 +852,7 @@ func writeMDReport(path string, results []core.ScanResult) {
 		return
 	}
 	defer f.Close()
-	io.WriteString(f, "# sxsc Scan Report\n\n")
+	io.WriteString(f, "# sxel Scan Report\n\n")
 	io.WriteString(f, fmt.Sprintf("**Findings:** %d\n\n", len(results)))
 	io.WriteString(f, "| Severity | Type | URL | Method | Parameter | Evidence |\n")
 	io.WriteString(f, "|---|---|---|---|---|---|\n")
