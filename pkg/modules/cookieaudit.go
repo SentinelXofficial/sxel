@@ -1,8 +1,9 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"io"
 	"net/http"
 	"strings"
@@ -51,7 +52,6 @@ func AuditCookies(client *http.Client, cfg *core.Config, targetURL string) []cor
 				Evidence:  fmt.Sprintf("Cookie %q set over HTTPS without Secure flag — may be sent over unencrypted connections", ck.Name),
 				Timestamp: time.Now(),
 			})
-			fmt.Printf("  \033[33m[✗ COOKIE-AUDIT]\033[0m %s: missing Secure flag\n", ck.Name)
 		}
 
 		// ── Missing HttpOnly ─────────────────────────────────────────────
@@ -66,7 +66,6 @@ func AuditCookies(client *http.Client, cfg *core.Config, targetURL string) []cor
 				Evidence:  fmt.Sprintf("Cookie %q lacks HttpOnly — readable by JavaScript (XSS risk)", ck.Name),
 				Timestamp: time.Now(),
 			})
-			fmt.Printf("  \033[33m[✗ COOKIE-AUDIT]\033[0m %s: missing HttpOnly flag\n", ck.Name)
 		}
 
 		// ── Missing or weak SameSite ─────────────────────────────────────
@@ -83,7 +82,6 @@ func AuditCookies(client *http.Client, cfg *core.Config, targetURL string) []cor
 				Evidence:  fmt.Sprintf("Cookie %q has no SameSite attribute — susceptible to CSRF", ck.Name),
 				Timestamp: time.Now(),
 			})
-			fmt.Printf("  \033[33m[✗ COOKIE-AUDIT]\033[0m %s: SameSite not set\n", ck.Name)
 		case "none":
 			// SameSite=None without Secure is dangerous
 			if !ck.Secure {
@@ -97,7 +95,6 @@ func AuditCookies(client *http.Client, cfg *core.Config, targetURL string) []cor
 					Evidence:  fmt.Sprintf("Cookie %q uses SameSite=None without Secure — browsers will reject this cookie in modern versions", ck.Name),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ COOKIE-AUDIT]\033[0m %s: SameSite=None without Secure\n", ck.Name)
 			}
 		}
 
@@ -121,7 +118,7 @@ func AuditCookies(client *http.Client, cfg *core.Config, targetURL string) []cor
 					Timestamp: time.Now(),
 				})
 				if cfg.Verbose {
-					fmt.Printf("  \033[90m[COOKIE-AUDIT]\033[0m %s: broad domain %q\n", ck.Name, domain)
+					output.Verbose("[COOKIE-AUDIT] %s: broad domain %q", ck.Name, domain)
 				}
 			}
 		}
@@ -144,7 +141,7 @@ func AuditCookies(client *http.Client, cfg *core.Config, targetURL string) []cor
 		if ck.Path == "/" || ck.Path == "" {
 			// This is common and not always a vulnerability, but worth noting
 			if cfg.Verbose {
-				fmt.Printf("  \033[90m[COOKIE-AUDIT]\033[0m %s: path=%q (all paths)\n", ck.Name, ck.Path)
+				output.Verbose("[COOKIE-AUDIT] %s: path=%q (all paths)", ck.Name, ck.Path)
 			}
 		}
 	}

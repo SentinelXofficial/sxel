@@ -1,10 +1,10 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"bytes"
 	"fmt"
-	"io"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"strings"
 	"time"
@@ -81,7 +81,7 @@ func ScanProtoPollution(client *http.Client, cfg *core.Config, target core.Crawl
 
 	for endpoint := range postEndpoints {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[proto-pollution] probing %s\033[0m\n", endpoint)
+			output.Verbose("[proto-pollution] probing %s", endpoint)
 		}
 
 		// Baseline: send a normal JSON object
@@ -118,7 +118,6 @@ func ScanProtoPollution(client *http.Client, cfg *core.Config, target core.Crawl
 						Evidence:  ev,
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ PROTO-POLLUTION]\033[0m %s [%s] %s\n", endpoint, pl.Label, ev)
 					break
 				}
 			}
@@ -142,7 +141,6 @@ func ScanProtoPollution(client *http.Client, cfg *core.Config, target core.Crawl
 						Evidence:  fmt.Sprintf("response length diff: %d bytes (HTTP %d) — possible prototype pollution processing", lenDiff, status),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[33m[? PROTO-POLLUTION]\033[0m %s [%s] len diff=%d\n", endpoint, pl.Label, lenDiff)
 				}
 			}
 		}
@@ -166,8 +164,8 @@ func doJSONPostRaw(client *http.Client, cfg *core.Config, rawURL, jsonBody strin
 		return "", 0, err
 	}
 	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
-	return string(b), resp.StatusCode, err
+	b := core.ReadBody(resp.Body)
+	return b, resp.StatusCode, nil
 }
 
 func containsProtoResult(results []core.ScanResult, endpoint, label string) bool {

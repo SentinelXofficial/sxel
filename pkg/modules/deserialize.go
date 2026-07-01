@@ -1,11 +1,11 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"strings"
 	"time"
@@ -118,17 +118,18 @@ func ScanDeserialize(client *http.Client, cfg *core.Config, target core.CrawlRes
 
 	for endpoint := range postEndpoints {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[deserialize] probing %s\033[0m\n", endpoint)
+			output.Verbose("[deserialize] probing %s", endpoint)
 		}
 
-		// Baseline: normal POST to get reference behavior
+		// Baseline: normal POST to get reference behavior.
+		// We compare each probe response against this baseline to filter out
+		// error markers that appear in normal (non-injected) responses, reducing
+		// false positives from verbose error pages.
 		baseBody, baseStatus, err := doPOSTPlain(client, cfg, endpoint, "sxsc=normal_baseline", "application/x-www-form-urlencoded")
 		if err != nil {
 			continue
 		}
-
-		_ = baseBody
-		_ = baseStatus
+		baseBodyLow := strings.ToLower(baseBody)
 
 		for _, pl := range allPayloads {
 			body, status, err := doPOSTPlain(client, cfg, endpoint, pl.Body, pl.ContentType)
@@ -138,9 +139,11 @@ func ScanDeserialize(client *http.Client, cfg *core.Config, target core.CrawlRes
 
 			bodyLow := strings.ToLower(body)
 
-			// Check for error markers that indicate deserialization processing
+			// Check for error markers that indicate deserialization processing,
+			// but only if they were NOT already present in the baseline response
 			for _, marker := range pl.Markers {
-				if strings.Contains(bodyLow, strings.ToLower(marker)) {
+				if strings.Contains(bodyLow, strings.ToLower(marker)) &&
+					!strings.Contains(baseBodyLow, strings.ToLower(marker)) {
 					results = append(results, core.ScanResult{
 						Type:      fmt.Sprintf("Insecure Deserialization [%s]", pl.Engine),
 						URL:       endpoint,
@@ -148,11 +151,9 @@ func ScanDeserialize(client *http.Client, cfg *core.Config, target core.CrawlRes
 						Parameter: "body",
 						Payload:   pl.Label,
 						Severity:  "CRITICAL",
-						Evidence:  fmt.Sprintf("marker %q in response indicates deserialization processing (HTTP %d)", marker, status),
+						Evidence:  fmt.Sprintf("marker %q in response indicates deserialization processing (HTTP %d, baseline HTTP %d)", marker, status, baseStatus),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ DESERIALIZE]\033[0m %s [%s] marker=%q HTTP=%d\n",
-						endpoint, pl.Engine, marker, status)
 					break
 				}
 			}
@@ -163,6 +164,7 @@ func ScanDeserialize(client *http.Client, cfg *core.Config, target core.CrawlRes
 }
 
 // doPOSTPlain sends a raw body with the given content-type to a URL.
+// Uses core.ReadBody which enforces a 10 MB size limit to prevent OOM.
 func doPOSTPlain(client *http.Client, cfg *core.Config, rawURL, body, contentType string) (string, int, error) {
 	cfg.Limiter.Wait()
 	req, err := http.NewRequest("POST", rawURL, bytes.NewBufferString(body))
@@ -176,6 +178,6 @@ func doPOSTPlain(client *http.Client, cfg *core.Config, rawURL, body, contentTyp
 		return "", 0, err
 	}
 	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
-	return string(b), resp.StatusCode, err
+	b := core.ReadBody(resp.Body)
+	return b, resp.StatusCode, nil
 }

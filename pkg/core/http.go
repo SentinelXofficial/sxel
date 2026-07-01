@@ -88,13 +88,9 @@ func FormDefaults(f Form) url.Values {
 	return v
 }
 
-
-
 // ScanSQLi moved to pkg/modules
 
-
 // ScanXSS moved to pkg/modules
-
 
 // StripQuery removes the query string and fragment from a URL.
 func StripQuery(rawURL string) string {

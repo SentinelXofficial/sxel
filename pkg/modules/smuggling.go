@@ -1,9 +1,10 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"crypto/tls"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net"
 	"net/http"
 	"net/url"
@@ -31,7 +32,7 @@ func ScanSmuggling(client *http.Client, cfg *core.Config, target core.CrawlResul
 		}
 	}
 
-	fmt.Printf("  \033[36m[smuggling] probing %s (%s)\033[0m\n", target.URL, host)
+	output.Info("[smuggling] probing %s (%s)\n", target.URL, host)
 
 	// ── 1. CL.TE desync ──────────────────────────────────────────────────
 	if res := testCLTE(client, cfg, host, target.URL, parsed); res != nil {
@@ -121,7 +122,7 @@ func testCLTE(client *http.Client, cfg *core.Config, host, targetURL string, par
 	resp1, err := smuggledRequest(host, targetURL, tlsCfg, []byte(raw), time.Duration(cfg.Timeout)*time.Second)
 	if err != nil {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[smuggling] CL.TE probe failed: %v\033[0m\n", err)
+			output.Verbose("[smuggling] CL.TE probe failed: %v", err)
 		}
 		return nil
 	}
@@ -160,7 +161,7 @@ func testTECL(client *http.Client, cfg *core.Config, host, targetURL string, par
 	resp1, err := smuggledRequest(host, targetURL, tlsCfg, []byte(raw), time.Duration(cfg.Timeout)*time.Second)
 	if err != nil {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[smuggling] TE.CL probe failed: %v\033[0m\n", err)
+			output.Verbose("[smuggling] TE.CL probe failed: %v", err)
 		}
 		return nil
 	}

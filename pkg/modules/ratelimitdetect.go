@@ -1,8 +1,9 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"io"
 	"net/http"
 	"time"
@@ -20,7 +21,7 @@ func TestRateLimiting(client *http.Client, cfg *core.Config, targetURL string) [
 		concurrency = cfg.Threads
 	}
 
-	fmt.Printf("  \033[36m[rate-limit-test] Sending %d requests (%d concurrent)...\033[0m\n", burstSize, concurrency)
+	output.Info("[rate-limit-test] Sending %d requests (%d concurrent)...\n", burstSize, concurrency)
 
 	type outcome struct {
 		status int
@@ -117,8 +118,7 @@ func TestRateLimiting(client *http.Client, cfg *core.Config, targetURL string) [
 		Timestamp: time.Now(),
 	})
 
-	fmt.Printf("  \033[36m[rate-limit-test]\033[0m %d requests | %d rate-limited | avg %dms | first HTTP %d\n",
-		burstSize, ratelimited, avgMS, firstStatus)
+	output.Info("[rate-limit-test] %d requests | %d rate-limited | avg %dms | first HTTP %d\n", burstSize, ratelimited, avgMS, firstStatus)
 
 	return results
 }

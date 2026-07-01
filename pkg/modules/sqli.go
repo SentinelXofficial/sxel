@@ -1,11 +1,11 @@
 package modules
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/pkg/core"
 	"github.com/SentinelXofficial/sxel/pkg/payload"
 )
@@ -24,7 +24,7 @@ func ScanSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 	}
 	for param := range params {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[sqli-get] param=%s\033[0m\n", param)
+			output.Verbose("[sqli-get] param=%s", param)
 		}
 		baseline := FetchBaseline(client, cfg, target.URL, param)
 	SQLiParamLoop:
@@ -38,7 +38,7 @@ func ScanSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 				if err != nil {
 					continue
 				}
-				body, status, err := core.DoGET(client, cfg, testURL)
+				body, _, err := core.DoGET(client, cfg, testURL)
 				if err != nil {
 					continue
 				}
@@ -48,7 +48,6 @@ func ScanSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 						Method: "GET", Parameter: param, Payload: payload,
 						Severity: "HIGH", Evidence: ev, Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ SQLI]\033[0m GET param=%s payload=%q HTTP=%d\n", param, payload, status)
 					break SQLiParamLoop
 				}
 			}
@@ -57,14 +56,14 @@ func ScanSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 
 	// ── Forms (GET + POST) ───────────────────────────────────────────────
 	for _, form := range target.Forms {
-		for _, inp := range form.Inputs {
-			if cfg.Verbose {
-				fmt.Printf("    \033[90m[sqli-form] %s %s input=%s\033[0m\n", form.Method, form.Action, inp.Name)
-			}
 		bl := FetchFormBaseline(client, cfg, form)
 		if bl.BodyLow == "" && bl.Length == 0 {
 			continue
 		}
+		for _, inp := range form.Inputs {
+			if cfg.Verbose {
+				output.Verbose("[sqli-form] %s %s input=%s", form.Method, form.Action, inp.Name)
+			}
 		SQLiFormLoop:
 			for _, base := range payload.SQLiPayloads {
 				variants := []string{base}
@@ -73,15 +72,14 @@ func ScanSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 				}
 				for _, pld := range variants {
 					var body string
-					var status int
-					var err error
+								var err error
 					if form.Method == "POST" {
 						d := core.FormDefaults(form)
 						d.Set(inp.Name, pld)
-						body, status, err = core.DoPOST(client, cfg, form.Action, d)
+						body, _, err = core.DoPOST(client, cfg, form.Action, d)
 					} else {
 						testURL, _ := core.SetParam(form.Action, inp.Name, pld)
-						body, status, err = core.DoGET(client, cfg, testURL)
+						body, _, err = core.DoGET(client, cfg, testURL)
 					}
 					if err != nil {
 						continue
@@ -92,8 +90,6 @@ func ScanSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 							Method: form.Method, Parameter: inp.Name, Payload: pld,
 							Severity: "HIGH", Evidence: ev, Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[31m[✗ SQLI-FORM]\033[0m %s %s input=%s HTTP=%d\n",
-							form.Method, form.Action, inp.Name, status)
 						break SQLiFormLoop
 					}
 				}

@@ -1,8 +1,9 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"io"
 	"net/http"
 	"net/url"
@@ -64,10 +65,13 @@ func ScanLFI(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 
 	for param := range params {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[lfi-get] param=%s\033[0m\n", param)
+			output.Verbose("[lfi-get] param=%s", param)
 		}
 
-		baseline, _, err := core.DoGET(client, cfg, target.URL); if err != nil || baseline == "" { continue }
+		baseline, _, err := core.DoGET(client, cfg, target.URL)
+		if err != nil || baseline == "" {
+			continue
+		}
 
 		// ── LFI ──────────────────────────────────────────────────────────
 	LFILoop:
@@ -97,8 +101,6 @@ func ScanLFI(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 						Evidence:  fmt.Sprintf("marker %q in response — file content leaked (HTTP %d)", marker, status),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ LFI]\033[0m param=%s payload=%q marker=%q HTTP=%d\n",
-						param, pl.Label, marker, status)
 					break LFILoop
 				}
 			}
@@ -117,7 +119,7 @@ func ScanLFI(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 						Evidence:  fmt.Sprintf("response grew by %d bytes — possible base64-encoded file returned", len(body)-len(baseline)),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[33m[? LFI-BASE64]\033[0m param=%s +%d bytes\n", param, len(body)-len(baseline))
+					output.SuspectInline("LFI-BASE64", "param=%s +%d bytes", param, len(body)-len(baseline))
 				}
 			}
 		}
@@ -158,7 +160,6 @@ func ScanLFI(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 						Evidence:  fmt.Sprintf("marker %q indicates server attempted to fetch remote resource (HTTP %d)", marker, status),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ RFI]\033[0m param=%s marker=%q HTTP=%d\n", param, marker, status)
 					break RFILoop
 				}
 			}
@@ -167,18 +168,19 @@ func ScanLFI(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 
 	// ── Forms ──────────────────────────────────────────────────────────────
 	for _, form := range target.Forms {
+		// Fetch baseline once per form, not per input — avoids redundant requests.
+		var baseline string
+		var baseErr error
+		if form.Method == "POST" {
+			baseline, _, baseErr = core.DoPOST(client, cfg, form.Action, core.FormDefaults(form))
+		} else {
+			baseline, _, baseErr = core.DoGET(client, cfg, form.Action)
+		}
+		if baseErr != nil || baseline == "" {
+			continue
+		}
 		for _, inp := range form.Inputs {
 			// LFI in forms
-			var baseline string
-			var baseErr error
-			if form.Method == "POST" {
-				baseline, _, baseErr = core.DoPOST(client, cfg, form.Action, core.FormDefaults(form))
-			} else {
-				baseline, _, baseErr = core.DoGET(client, cfg, form.Action)
-			}
-			if baseErr != nil || baseline == "" {
-				continue
-			}
 
 		LFIFormLoop:
 			for _, pl := range lfiPayloads {
@@ -212,7 +214,6 @@ func ScanLFI(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 							Evidence:  fmt.Sprintf("marker %q in response (HTTP %d)", marker, status),
 							Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[31m[✗ LFI-FORM]\033[0m %s input=%s marker=%q\n", form.Action, inp.Name, marker)
 						break LFIFormLoop
 					}
 				}
@@ -283,7 +284,6 @@ func lfiLogPoisonProbe(client *http.Client, cfg *core.Config, target core.CrawlR
 					Evidence:  fmt.Sprintf("Injected User-Agent %q found in %s — log poisoning to RCE possible", poisonMarker, logPath),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ LFI-LOG-POISON]\033[0m param=%s log=%s marker reflected!\n", param, logPath)
 				return
 			}
 		}

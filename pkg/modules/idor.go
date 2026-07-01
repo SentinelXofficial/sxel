@@ -1,8 +1,8 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -112,8 +112,6 @@ func ScanIDOR(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 					Evidence:  fmt.Sprintf("ID %d→%d: status %d→%d (access-control bypassed)", origID, probeID, origStatus, testStatus),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ IDOR]\033[0m %s param=%s id %d→%d status %d→%d\n",
-					target.URL, label, origID, probeID, origStatus, testStatus)
 				break
 			}
 
@@ -131,8 +129,6 @@ func ScanIDOR(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 						Evidence:  fmt.Sprintf("ID %d→%d: HTTP 200, body diff=%d bytes (different record returned without ownership check)", origID, probeID, diff),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ IDOR]\033[0m %s param=%s id %d→%d diff=%d bytes\n",
-						target.URL, label, origID, probeID, diff)
 					break
 				}
 			}

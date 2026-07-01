@@ -1,8 +1,9 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,8 +22,8 @@ var ssrfURLParams = []string{
 
 // ssrfProbe is an internal address we try to hit via the target server.
 type ssrfProbe struct {
-	Payload  string
-	Label    string
+	Payload string
+	Label   string
 	// markers are strings we expect to find in the response if the server
 	// successfully fetched the resource (cloud metadata content, etc.)
 	Markers []string
@@ -148,15 +149,21 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 	for param := range params {
 		if !isSSRFParam(param) {
 			if cfg.Verbose {
-				fmt.Printf("    \033[90m[ssrf] skip param=%s (not URL-like)\033[0m\n", param)
+				output.Verbose("[ssrf] skip param=%s (not URL-like)", param)
 			}
 			continue
 		}
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[ssrf-get] param=%s\033[0m\n", param)
+			output.Verbose("[ssrf-get] param=%s", param)
 		}
 
-		baseline, _, err := core.DoGET(client, cfg, target.URL); if err != nil || baseline == "" { continue }
+		// Baseline: use a known-safe value (not the original URL's raw value)
+		// so we have a clean reference for comparison.
+		safeURL, _ := core.SetParam(target.URL, param, "safe")
+		baseline, _, err := core.DoGET(client, cfg, safeURL)
+		if err != nil || baseline == "" {
+			continue
+		}
 
 	SSRFURLLoop:
 		for _, probe := range ssrfProbes {
@@ -176,14 +183,12 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 				if strings.Contains(bodyLow, strings.ToLower(marker)) &&
 					!strings.Contains(strings.ToLower(baseline), strings.ToLower(marker)) {
 					results = append(results, core.ScanResult{
-						Type:      "SSRF (Server-Side Request Forgery)",
-						URL:       testURL, Method: "GET", Parameter: param,
-						Payload:   probe.Payload, Severity: "CRITICAL",
+						Type: "SSRF (Server-Side Request Forgery)",
+						URL:  testURL, Method: "GET", Parameter: param,
+						Payload: probe.Payload, Severity: "CRITICAL",
 						Evidence:  fmt.Sprintf("[%s] marker %q in response (HTTP %d)", probe.Label, marker, status),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ SSRF]\033[0m GET param=%s probe=%q marker=%q HTTP=%d\n",
-						param, probe.Label, marker, status)
 					break SSRFURLLoop
 				}
 			}
@@ -192,14 +197,12 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 			for _, errMark := range ssrfErrorMarkers {
 				if strings.Contains(bodyLow, errMark) && !strings.Contains(strings.ToLower(baseline), errMark) {
 					results = append(results, core.ScanResult{
-						Type:      "SSRF (Error Leakage)",
-						URL:       testURL, Method: "GET", Parameter: param,
-						Payload:   probe.Payload, Severity: "HIGH",
+						Type: "SSRF (Error Leakage)",
+						URL:  testURL, Method: "GET", Parameter: param,
+						Payload: probe.Payload, Severity: "HIGH",
 						Evidence:  fmt.Sprintf("[%s] error marker %q leaked in response (HTTP %d)", probe.Label, errMark, status),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[33m[✗ SSRF-ERR]\033[0m GET param=%s probe=%q errmark=%q HTTP=%d\n",
-						param, probe.Label, errMark, status)
 					break SSRFURLLoop
 				}
 			}
@@ -209,8 +212,6 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 		if !containsSSRFResult(results, target.URL, param) {
 			if tr := ssrfTimingProbe(client, cfg, target.URL, param); tr != nil {
 				results = append(results, *tr)
-				fmt.Printf("  \033[33m[✗ SSRF-TIMING]\033[0m GET param=%s diff=%v\n",
-					param, tr.Evidence)
 			}
 		}
 	}
@@ -222,8 +223,7 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 				continue
 			}
 			if cfg.Verbose {
-				fmt.Printf("    \033[90m[ssrf-form] %s %s input=%s\033[0m\n",
-					form.Method, form.Action, inp.Name)
+				output.Verbose("[ssrf-form] %s %s input=%s\n", form.Method, form.Action, inp.Name)
 			}
 
 			var baseline string
@@ -261,14 +261,12 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 					if strings.Contains(bodyLow, strings.ToLower(marker)) &&
 						!strings.Contains(strings.ToLower(baseline), strings.ToLower(marker)) {
 						results = append(results, core.ScanResult{
-							Type:      "SSRF via core.Form (Server-Side Request Forgery)",
-							URL:       form.Action, Method: form.Method, Parameter: inp.Name,
-							Payload:   probe.Payload, Severity: "CRITICAL",
+							Type: "SSRF via core.Form (Server-Side Request Forgery)",
+							URL:  form.Action, Method: form.Method, Parameter: inp.Name,
+							Payload: probe.Payload, Severity: "CRITICAL",
 							Evidence:  fmt.Sprintf("[%s] marker %q in response (HTTP %d)", probe.Label, marker, status),
 							Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[31m[✗ SSRF-FORM]\033[0m %s %s input=%s probe=%q marker=%q HTTP=%d\n",
-							form.Method, form.Action, inp.Name, probe.Label, marker, status)
 						break SSRFFormLoop
 					}
 				}
@@ -276,14 +274,12 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 				for _, errMark := range ssrfErrorMarkers {
 					if strings.Contains(bodyLow, errMark) && !strings.Contains(strings.ToLower(baseline), errMark) {
 						results = append(results, core.ScanResult{
-							Type:      "SSRF via core.Form (Error Leakage)",
-							URL:       form.Action, Method: form.Method, Parameter: inp.Name,
-							Payload:   probe.Payload, Severity: "HIGH",
+							Type: "SSRF via core.Form (Error Leakage)",
+							URL:  form.Action, Method: form.Method, Parameter: inp.Name,
+							Payload: probe.Payload, Severity: "HIGH",
 							Evidence:  fmt.Sprintf("[%s] error marker %q leaked in response (HTTP %d)", probe.Label, errMark, status),
 							Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[33m[✗ SSRF-FORM-ERR]\033[0m %s %s input=%s probe=%q errmark=%q HTTP=%d\n",
-							form.Method, form.Action, inp.Name, probe.Label, errMark, status)
 						break SSRFFormLoop
 					}
 				}
@@ -293,8 +289,6 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 			if !containsSSRFResult(results, form.Action, inp.Name) {
 				if tr := ssrfTimingProbe(client, cfg, form.Action, inp.Name); tr != nil {
 					results = append(results, *tr)
-					fmt.Printf("  \033[33m[✗ SSRF-FORM-TIMING]\033[0m %s %s input=%s diff=%v\n",
-						form.Method, form.Action, inp.Name, tr.Evidence)
 				}
 			}
 		}
@@ -345,8 +339,8 @@ func ssrfTimingProbe(client *http.Client, cfg *core.Config, rawURL, param string
 	// A >1s difference is a strong signal the backend is actually connecting
 	if diff > time.Second {
 		return &core.ScanResult{
-			Type:      "SSRF (Timing/Port-Scan)",
-			URL:       urlOpen, Method: "GET", Parameter: param,
+			Type: "SSRF (Timing/Port-Scan)",
+			URL:  urlOpen, Method: "GET", Parameter: param,
 			Payload:   fmt.Sprintf("open: %s vs closed: %s", openPayload, closedPayload),
 			Severity:  "HIGH",
 			Evidence:  fmt.Sprintf("timing diff %v (open %v / closed %v)", diff.Round(time.Millisecond), openTime.Round(time.Millisecond), closedTime.Round(time.Millisecond)),

@@ -1,13 +1,14 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/engine"
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"bytes"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
+	"github.com/SentinelXofficial/sxel/pkg/engine"
+	"io"
 	"mime/multipart"
 	"net/http"
-	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -38,7 +39,7 @@ func ScanFileUpload(client *http.Client, cfg *core.Config, target core.CrawlResu
 		}
 
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[file-upload] form=%s input=%s\033[0m\n", action, fileInput.Name)
+			output.Verbose("[file-upload] form=%s input=%s", action, fileInput.Name)
 		}
 
 		type testCase struct {
@@ -142,8 +143,6 @@ func ScanFileUpload(client *http.Client, cfg *core.Config, target core.CrawlResu
 					Evidence:  fmt.Sprintf("[%s] %s", tc.label, evidence),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ FILE-UPLOAD]\033[0m %s filename=%q HTTP=%d\n",
-					action, tc.filename, resp.StatusCode)
 				break // one confirmed finding per form is sufficient
 			}
 		}
@@ -239,4 +238,3 @@ func detectUploadSuccess(resp *http.Response, body, filename, baseURL string, cl
 
 	return false, ""
 }
-

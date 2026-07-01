@@ -1,10 +1,10 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"net/url"
 	"strings"
@@ -85,7 +85,6 @@ func ScanGraphQL(client *http.Client, cfg *core.Config, baseURL string) []core.S
 				Evidence:  "Server returned __schema data — full type system is enumerable by attackers",
 				Timestamp: time.Now(),
 			})
-			fmt.Printf("  \033[33m[✗ GRAPHQL]\033[0m Introspection enabled at %s\n", ep)
 		}
 
 		// ── Test 2: Field suggestions (schema leak even without introspection) ──
@@ -103,7 +102,6 @@ func ScanGraphQL(client *http.Client, cfg *core.Config, baseURL string) []core.S
 					Evidence:  `Server returned "did you mean" hint — field names enumerable without introspection`,
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[33m[✗ GRAPHQL]\033[0m Field suggestions enabled at %s\n", ep)
 			}
 		}
 
@@ -126,7 +124,6 @@ func ScanGraphQL(client *http.Client, cfg *core.Config, baseURL string) []core.S
 				Evidence:  "Server accepts batched query arrays — may enable rate-limit bypass or brute-force amplification",
 				Timestamp: time.Now(),
 			})
-			fmt.Printf("  \033[33m[✗ GRAPHQL]\033[0m Batching accepted at %s\n", ep)
 		}
 
 		// ── Test 4: Unbounded query depth ──────────────────────────────────
@@ -148,7 +145,6 @@ func ScanGraphQL(client *http.Client, cfg *core.Config, baseURL string) []core.S
 					Evidence:  fmt.Sprintf("Server accepted a 12-level nested query (HTTP %d) without depth rejection", deepStatus),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[33m[✗ GRAPHQL]\033[0m No query depth limit at %s\n", ep)
 			}
 		}
 
@@ -170,7 +166,6 @@ func ScanGraphQL(client *http.Client, cfg *core.Config, baseURL string) []core.S
 					Evidence:  fmt.Sprintf("Server executed a 25-alias query (HTTP %d) — multiplier amplification possible", aliasStatus),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[33m[✗ GRAPHQL]\033[0m Alias amplification possible at %s\n", ep)
 			}
 		}
 	}

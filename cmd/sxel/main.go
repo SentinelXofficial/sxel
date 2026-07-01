@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/SentinelXofficial/sxel/internal/banner"
+	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/internal/updater"
 	"github.com/SentinelXofficial/sxel/internal/version"
 	"github.com/SentinelXofficial/sxel/pkg/core"
@@ -36,7 +38,7 @@ func main() {
 	jsonOut := flag.String("json-output", "", "Save JSON report")
 	csvOut := flag.String("csv-output", "", "Save CSV report")
 	mdOut := flag.String("md-output", "", "Save Markdown report")
-	output := flag.String("o", "", "Alias for --html-output")
+	outFlag := flag.String("o", "", "Alias for --html-output")
 	sqlOnly := flag.Bool("sql-only", false, "Test SQL injection only")
 	xssOnly := flag.Bool("xss-only", false, "Test XSS only")
 	cookie := flag.String("cookie", "", "Cookie value, e.g. session=abc123")
@@ -100,6 +102,17 @@ func main() {
 	rateLimitTestFlag := flag.Bool("rate-limit-test", false, "Test rate limiting defenses on target")
 	subTakeoverFlag := flag.Bool("subdomain-takeover", false, "Check for subdomain takeover (CNAME dangling)")
 
+	// Template engine
+	templatesFlag := flag.Bool("templates", false, "Run YAML-based template scans")
+	templateDir := flag.String("template-dir", "./templates/", "Path to templates directory")
+
+	// Sprint B flags
+	clutchFlag := flag.Bool("clutch", false, "Detect race condition / TOCTOU vulnerabilities")
+	snipeFlag := flag.Bool("snipe", false, "All modules attack single endpoint simultaneously (deep-dive)")
+	strobeFlag := flag.Bool("strobe", false, "Full adaptive deep-dive pipeline (fingerprint → smart scan → chains → templates)")
+	breachFlag := flag.Bool("breach", false, "Probe OAuth + SAML misconfigurations")
+	grpcFlag := flag.Bool("grpc", false, "Probe gRPC reflection + REST gateway")
+
 	flag.Usage = func() {
 		fmt.Println("Usage: sxel -u <URL> [OPTIONS]")
 		fmt.Println()
@@ -143,7 +156,7 @@ Examples:
 		target = flag.Arg(0)
 	}
 	if *htmlOut == "" {
-		*htmlOut = *output
+		*htmlOut = *outFlag
 	}
 
 	listPath := *listFlag
@@ -155,11 +168,11 @@ Examples:
 	if listPath != "" {
 		urls, err := core.ReadURLList(listPath)
 		if err != nil {
-			fmt.Printf("[!] Failed to read --list file: %v\n", err)
+			output.Error("Failed to read --list file: %v", err)
 			os.Exit(1)
 		}
 		if len(urls) == 0 {
-			fmt.Println("[!] --list file contained no usable URLs")
+			output.Error("--list file contained no usable URLs")
 			os.Exit(1)
 		}
 		rawTargets = urls
@@ -173,7 +186,7 @@ Examples:
 	for _, t := range rawTargets {
 		p, err := url.Parse(t)
 		if err != nil || (p.Scheme != "http" && p.Scheme != "https") {
-			fmt.Printf("[!] Invalid URL - must start with http:// or https://: %s\n", t)
+			output.Error("Invalid URL - must start with http:// or https://: %s", t)
 			os.Exit(1)
 		}
 		_ = p
@@ -181,7 +194,7 @@ Examples:
 
 	headers, err := core.BuildHeaders(headerArgs, *headersFile)
 	if err != nil {
-		fmt.Printf("[!] %v\n", err)
+		output.Error("%v", err)
 		os.Exit(1)
 	}
 
@@ -221,6 +234,12 @@ Examples:
 		*lfiFlag = true
 		*smugglingFlag = true
 		*subTakeoverFlag = true
+		*templatesFlag = true
+		*clutchFlag = true
+		*snipeFlag = true
+		*strobeFlag = true
+		*breachFlag = true
+		*grpcFlag = true
 	}
 
 	if *threads < 1 {
@@ -250,14 +269,14 @@ Examples:
 		for _, t := range rawTargets {
 			parsed, err := url.Parse(t)
 			if err != nil {
-				fmt.Printf("[!] Skipping invalid URL: %s\n", t)
+				output.Error("Skipping invalid URL: %s", t)
 				continue
 			}
 			host := parsed.Host
 			excluded := false
 			for _, pat := range outOfScopePatterns {
 				if engine.MatchScope(pat, host, t) {
-					fmt.Printf("[!] Skipping out-of-scope: %s (matches %q)\n", t, pat)
+					output.Warn("Skipping out-of-scope: %s (matches %q)", t, pat)
 					excluded = true
 					break
 				}
@@ -274,17 +293,17 @@ Examples:
 					}
 				}
 				if !matched {
-					fmt.Printf("[!] Skipping (not in scope): %s\n", t)
+					output.Warn("Skipping (not in scope): %s", t)
 					continue
 				}
 			}
 			filtered = append(filtered, t)
 		}
 		if len(filtered) == 0 {
-			fmt.Println("[!] No targets remain after scope filtering")
+			output.Error("No targets remain after scope filtering")
 			os.Exit(1)
 		}
-		fmt.Printf("[*] Scope filter: %d/%d target(s) in scope\n", len(filtered), len(rawTargets))
+		output.Info("Scope filter: %d/%d target(s) in scope", len(filtered), len(rawTargets))
 		rawTargets = filtered
 	}
 
@@ -350,11 +369,18 @@ Examples:
 		Smuggling:      *smugglingFlag,
 		RateLimitTest:  *rateLimitTestFlag,
 		SubTakeover:    *subTakeoverFlag,
+		Templates:      *templatesFlag,
+		TemplateDir:    *templateDir,
+		Clutch:         *clutchFlag,
+		Snipe:          *snipeFlag,
+		Strobe:         *strobeFlag,
+		Breach:         *breachFlag,
+		Grpc:           *grpcFlag,
 	}
 
 	if cfg.RateLimit > 0 {
 		cfg.Limiter = core.NewRateLimiter(cfg.RateLimit)
-		fmt.Printf("[*] Rate Limit  : %d req/sec\n", cfg.RateLimit)
+		output.Info("Rate Limit: %d req/sec", cfg.RateLimit)
 	}
 
 	var resumeResults []core.ScanResult
@@ -364,7 +390,7 @@ Examples:
 			resumeResults = make([]core.ScanResult, len(cs.Results))
 			copy(resumeResults, cs.Results)
 		} else {
-			fmt.Println("[!] No checkpoint found — starting fresh scan")
+			output.Warn("No checkpoint found — starting fresh scan")
 			cfg.Checkpoint = core.NewCheckpoint(*checkpointFile)
 		}
 	} else {
@@ -372,47 +398,78 @@ Examples:
 	}
 
 	start := time.Now()
+
+	// ── Module loading summary ───────────────────────────────────────────────
+	printModuleSummary(cfg)
+
 	displayTarget := target
 	if listPath != "" {
 		displayTarget = fmt.Sprintf("%d targets from %s", len(rawTargets), listPath)
 	}
-	fmt.Printf("Target  : %s\n", displayTarget)
-	fmt.Printf("Started : %s\n", start.Format("2006-01-02 15:04:05"))
+	output.Info("Target: %s", displayTarget)
 	if len(headers) > 0 {
-		fmt.Printf("[*] Extra Headers : %d\n", len(headers))
+		output.Info("Extra Headers: %d", len(headers))
 	}
 	if cfg.WAFBypass {
-		fmt.Println("[*] WAF Bypass : ENABLED")
+		output.Info("WAF Bypass: ENABLED")
 	}
 	if cfg.Crawl || cfg.BasicCrawl {
 		mode := "deep"
 		if cfg.BasicCrawl {
 			mode = "basic"
 		}
-		fmt.Printf("[*] Crawl Mode : %s (max depth %d)\n", mode, cfg.Depth)
+		output.Info("Crawl Mode: %s (max depth %d)", mode, cfg.Depth)
 	}
 	if cfg.WS {
-		fmt.Println("[*] WebSocket  : scan enabled")
+		output.Info("WebSocket: scan enabled")
 	}
 	if cfg.BlindSQLi {
-		fmt.Println("[*] Blind SQLi : enabled (slower due to time-based tests)")
+		output.Info("Blind SQLi: enabled (slower due to time-based tests)")
+	}
+
+	// ── Load YAML templates ──────────────────────────────────────────────────
+	var loadedTemplates []engine.Template
+	if cfg.Templates {
+		var loadErr error
+		loadedTemplates, loadErr = engine.LoadTemplates(cfg.TemplateDir)
+		if loadErr != nil {
+			output.Warn("Cannot load templates from %q: %v — continuing without templates", cfg.TemplateDir, loadErr)
+		} else if len(loadedTemplates) > 0 {
+			output.Info("Loaded %d template(s) from %s", len(loadedTemplates), cfg.TemplateDir)
+		}
+	}
+
+	// ── Start OOB callback server (for blind SSRF/XXE/CMDI detection) ─────────
+	var oobServer *engine.OOBServer
+	if cfg.AllChecks || cfg.SSRFScan || cfg.XXEScan || cfg.CmdInjection {
+		var oobErr error
+		oobServer, oobErr = engine.NewOOBServer()
+		if oobErr != nil {
+			output.Warn("Cannot start OOB callback server: %v", oobErr)
+		} else {
+			defer oobServer.Close()
+		}
 	}
 
 	client := core.NewHTTPClient(cfg)
-	defer cfg.Limiter.Close()
+	if cfg.Limiter != nil {
+		defer cfg.Limiter.Close()
+	}
 
 	var allResults []core.ScanResult
 	totalURLs := 0
 	totalForms := 0
 
 	if len(rawTargets) == 1 {
-		fmt.Println("\n[*] Running site-wide checks...")
-		res, urls, forms := scanTarget(client, cfg, rawTargets[0], *useRobots)
+		fmt.Println()
+		output.Info("Running site-wide checks...")
+		res, urls, forms := scanTarget(client, cfg, rawTargets[0], *useRobots, loadedTemplates)
 		allResults = res
 		totalURLs = urls
 		totalForms = forms
 	} else {
-		fmt.Printf("\n[*] Scanning %d targets from %s (concurrency %d)...\n", len(rawTargets), listPath, *listConcurrency)
+		fmt.Println()
+		output.Info("Scanning %d targets from %s (concurrency %d)...", len(rawTargets), listPath, *listConcurrency)
 		var wg sync.WaitGroup
 		var mu sync.Mutex
 		sem := make(chan struct{}, *listConcurrency)
@@ -422,7 +479,7 @@ Examples:
 			go func(tg string) {
 				defer wg.Done()
 				defer func() { <-sem }()
-				res, urls, forms := scanTarget(client, cfg, tg, *useRobots)
+				res, urls, forms := scanTarget(client, cfg, tg, *useRobots, loadedTemplates)
 				mu.Lock()
 				allResults = append(allResults, res...)
 				totalURLs += urls
@@ -442,22 +499,11 @@ Examples:
 	allResults = dedupResults(allResults)
 
 	elapsed := time.Since(start)
-	fmt.Printf("\n[+] Scan complete in %v — %d URL(s), %d form(s), %d finding(s)\n",
+	fmt.Println()
+	output.Success("Scan complete in %v — %d URL(s), %d form(s), %d finding(s)",
 		elapsed.Round(time.Millisecond), totalURLs, totalForms, len(allResults))
 
 	if len(allResults) > 0 {
-		fmt.Println("\n── Findings ───────────────────────────────────────────────")
-		for _, r := range allResults {
-			sevTag := severityTag(r.Severity)
-			fmt.Printf("  %s [%s] %s %s\n", sevTag, r.Type, r.Method, r.URL)
-			if r.Parameter != "" {
-				fmt.Printf("    Parameter : %s\n", r.Parameter)
-			}
-			if r.Evidence != "" {
-				fmt.Printf("    Evidence  : %s\n", r.Evidence)
-			}
-		}
-		fmt.Println("────────────────────────────────────────────────────────────")
 		writeReports(cfg, allResults)
 		if *mdOut != "" {
 			writeMDReport(*mdOut, allResults)
@@ -465,7 +511,66 @@ Examples:
 	}
 }
 
-func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots bool) ([]core.ScanResult, int, int) {
+// printModuleSummary lists which scan modules are enabled, Xray-style.
+func printModuleSummary(cfg *core.Config) {
+	var mods []string
+	add := func(name string, enabled bool) {
+		if enabled {
+			mods = append(mods, name)
+		}
+	}
+	add("SQLi", !cfg.XSSOnly || cfg.SQLOnly)
+	add("BlindSQLi", cfg.BlindSQLi)
+	add("XSS", !cfg.SQLOnly || cfg.XSSOnly)
+	add("SSRF", cfg.SSRFScan)
+	add("CMDI", cfg.CmdInjection)
+	add("LFI/RFI", cfg.LFI)
+	add("NoSQLi", cfg.NoSQLScan)
+	add("XXE", cfg.XXEScan)
+	add("SSTI", cfg.SSTI)
+	add("CRLF", cfg.CRLFScan)
+	add("OpenRedirect", cfg.OpenRedirect)
+	add("PathTraversal", cfg.PathTraversal)
+	add("HeaderInjection", cfg.HeaderScan)
+	add("CookieInjection", cfg.CookieScan)
+	add("HostHeader", cfg.HostHeader)
+	add("JSONInjection", cfg.JSONScan)
+	add("DirScan", cfg.DirScan)
+	add("SensitiveFiles", cfg.SensitiveFiles)
+	add("SecurityHeaders", cfg.SecurityHdrs)
+	add("CORS", cfg.CORSScan)
+	add("HTTPMethods", cfg.HTTPMethods)
+	add("JSEndpoints", cfg.JSEndpoints)
+	add("WAFDetect", cfg.WAFAutoDetect)
+	add("FileUpload", cfg.FileUpload)
+	add("JWT", cfg.JWTScan)
+	add("IDOR", cfg.IDORScan)
+	add("GraphQL", cfg.GraphQL)
+	add("CSRF", cfg.CSRF)
+	add("CookieAudit", cfg.CookieAudit)
+	add("SubdomainEnum", cfg.SubdomainEnum)
+	add("ProtoPollution", cfg.ProtoPollution)
+	add("Deserialize", cfg.Deserialize)
+	add("CachePoison", cfg.CachePoison)
+	add("Smuggling", cfg.Smuggling)
+	add("RateLimitTest", cfg.RateLimitTest)
+	add("SubTakeover", cfg.SubTakeover)
+	add("WebSocket", cfg.WS)
+	add("WAFBypass", cfg.WAFBypass)
+	add("Clutch", cfg.Clutch)
+	add("Snipe", cfg.Snipe)
+	add("Strobe", cfg.Strobe)
+	add("Breach", cfg.Breach)
+	add("Grpc", cfg.Grpc)
+	add("Templates", cfg.Templates)
+
+	output.Info("Loaded %d scan module(s)", len(mods))
+	if len(mods) > 0 {
+		output.Info("Enabled: %s", strings.Join(mods, ", "))
+	}
+}
+
+func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots bool, templates []engine.Template) ([]core.ScanResult, int, int) {
 	var allResults []core.ScanResult
 	var mu sync.Mutex
 
@@ -475,11 +580,11 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 	if cfg.WAFAutoDetect {
 		wafResult := modules.AutoDetectWAF(client, cfg, target)
 		if wafResult.Detected {
-			fmt.Printf("[~] WAF detected: %s (%s)\n", wafResult.Vendor, wafResult.Evidence)
+			output.Warn("WAF detected: %s (%s)", wafResult.Vendor, wafResult.Evidence)
 			cfg.WAFBypass = true
-			fmt.Printf("[~] WAF Bypass: auto-enabled\n")
+			output.Warn("WAF Bypass: auto-enabled")
 		} else {
-			fmt.Printf("[+] WAF: not detected\n")
+			output.Success("WAF: not detected")
 		}
 	}
 
@@ -532,12 +637,12 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 				return
 			case <-tick.C:
 				done := int(atomic.LoadInt64(&doneCount))
-				sent := int(atomic.LoadInt64(&reqSent))
-				failed := int(atomic.LoadInt64(&reqFailed))
+				sent := atomic.LoadInt64(&reqSent)
+				failed := atomic.LoadInt64(&reqFailed)
 				ns := atomic.LoadInt64(&reqTotalNS)
 				lat := time.Duration(0)
 				if sent > 0 {
-					lat = time.Duration(ns / int64(sent))
+					lat = time.Duration(ns / sent)
 				}
 				fp := 0.0
 				if sent > 0 {
@@ -546,8 +651,7 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 				targetsMu.Lock()
 				n := len(targets)
 				targetsMu.Unlock()
-				fmt.Printf("\r\033[K[*] scanned: %d, pending: %d, requestSent: %d, latency: %v, failedRatio: %.1f%%",
-					done, n-done, sent, lat.Round(time.Millisecond), fp)
+				output.Progress(done, n-done, sent, lat, fp)
 			}
 		}
 	}()
@@ -555,21 +659,71 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 	scanPage := func(t core.CrawlResult) {
 		wg.Add(1)
 		go func() {
-			sem <- struct{}{}
 			defer wg.Done()
-			defer func() { <-sem }()
 			defer func() { atomic.AddInt64(&doneCount, 1) }()
 
 			if cfg.Checkpoint.IsScanned(t.URL) {
 				if cfg.Verbose {
-					fmt.Printf("\n    [skip] %s (already scanned)\n", t.URL)
+					output.Verbose("[skip] %s (already scanned)", t.URL)
 				}
 				return
 			}
+			// Apply delay BEFORE acquiring the semaphore so other workers
+			// can use the slot while this one waits.
 			if cfg.Delay > 0 {
 				time.Sleep(time.Duration(cfg.Delay) * time.Millisecond)
 			}
+
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			var local []core.ScanResult
+
+			// Strobe mode: adaptive deep-dive with fingerprinting + smart module selection
+			if cfg.Strobe {
+				local = modules.ScanStrobe(client, cfg, t, templates)
+				cfg.Checkpoint.MarkScanned(t.URL, local)
+				if len(local) > 0 {
+					fmt.Printf("\r\033[K")
+					for _, r := range local {
+						output.PrintFinding(output.Finding{
+							Type: r.Type, URL: r.URL, Method: r.Method,
+							Parameter: r.Parameter, Payload: r.Payload,
+							Severity: r.Severity, Evidence: r.Evidence,
+							Timestamp:  r.Timestamp.Format("2006-01-02 15:04:05"),
+							ParamKey:   r.ParamKey, ParamValue: r.ParamValue,
+							Position:   r.Position, Extra: r.Extra,
+						})
+					}
+					mu.Lock()
+					allResults = append(allResults, local...)
+					mu.Unlock()
+				}
+				return
+			}
+
+			// Snipe mode: deep-dive all modules on single endpoint
+			if cfg.Snipe {
+				local = runSnipe(client, cfg, t.URL, templates)
+				cfg.Checkpoint.MarkScanned(t.URL, local)
+				if len(local) > 0 {
+					fmt.Printf("\r\033[K")
+					for _, r := range local {
+						output.PrintFinding(output.Finding{
+							Type: r.Type, URL: r.URL, Method: r.Method,
+							Parameter: r.Parameter, Payload: r.Payload,
+							Severity: r.Severity, Evidence: r.Evidence,
+							Timestamp:  r.Timestamp.Format("2006-01-02 15:04:05"),
+							ParamKey:   r.ParamKey, ParamValue: r.ParamValue,
+							Position:   r.Position, Extra: r.Extra,
+						})
+					}
+					mu.Lock()
+					allResults = append(allResults, local...)
+					mu.Unlock()
+				}
+				return
+			}
+
 			runSQL := !cfg.XSSOnly || cfg.SQLOnly
 			runXSS := !cfg.SQLOnly || cfg.XSSOnly
 			if runSQL {
@@ -639,8 +793,32 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 			if cfg.CachePoison {
 				local = append(local, modules.ScanCachePoison(client, cfg, t)...)
 			}
+			if cfg.Clutch {
+				local = append(local, modules.ScanClutch(client, cfg, t)...)
+			}
+			if cfg.Breach {
+				local = append(local, modules.ScanBreach(client, cfg, t)...)
+			}
+			if cfg.Grpc {
+				local = append(local, modules.ScanGrpc(client, cfg, t)...)
+			}
+			if cfg.Templates && len(templates) > 0 {
+				local = append(local, engine.RunTemplates(client, cfg, t.URL, templates)...)
+			}
 			cfg.Checkpoint.MarkScanned(t.URL, local)
 			if len(local) > 0 {
+				// Clear progress line, print findings Xray-style, then add to results
+				fmt.Printf("\r\033[K")
+				for _, r := range local {
+					output.PrintFinding(output.Finding{
+						Type: r.Type, URL: r.URL, Method: r.Method,
+						Parameter: r.Parameter, Payload: r.Payload,
+						Severity: r.Severity, Evidence: r.Evidence,
+						Timestamp:  r.Timestamp.Format("2006-01-02 15:04:05"),
+						ParamKey:   r.ParamKey, ParamValue: r.ParamValue,
+						Position:   r.Position, Extra: r.Extra,
+					})
+				}
 				mu.Lock()
 				allResults = append(allResults, local...)
 				mu.Unlock()
@@ -710,7 +888,8 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 	close(progressDone)
 
 	totalURLs = len(targets)
-	fmt.Printf("\r\033[K[+] %d URL(s) scanned in %v\n", totalURLs, time.Since(startTime).Round(time.Millisecond))
+	fmt.Printf("\r\033[K")
+	output.Success("%d URL(s) scanned in %v", totalURLs, time.Since(startTime).Round(time.Millisecond))
 
 	root := core.CrawlResult{URL: target}
 	if cfg.HeaderScan {
@@ -735,7 +914,7 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 		allResults = append(allResults, modules.CheckSubdomainTakeover(client, cfg, target)...)
 	}
 	if cfg.RateLimitTest {
-		fmt.Printf("[!] WARNING: --rate-limit-test sends 30 burst requests and may trigger WAF blacklists.\n")
+		output.Warn("--rate-limit-test sends 30 burst requests and may trigger WAF blacklists.")
 		allResults = append(allResults, modules.TestRateLimiting(client, cfg, target)...)
 	}
 
@@ -755,21 +934,6 @@ func dedupResults(results []core.ScanResult) []core.ScanResult {
 	return out
 }
 
-func severityTag(sev string) string {
-	switch strings.ToUpper(sev) {
-	case "CRITICAL":
-		return "\033[1;35m[CRITICAL]\033[0m"
-	case "HIGH":
-		return "\033[31m[HIGH]\033[0m"
-	case "MEDIUM":
-		return "\033[33m[MEDIUM]\033[0m"
-	case "LOW":
-		return "\033[34m[LOW]\033[0m"
-	default:
-		return "\033[90m[INFO]\033[0m"
-	}
-}
-
 func writeReports(cfg *core.Config, results []core.ScanResult) {
 	if cfg.HTMLOutput != "" {
 		writeHTMLReport(cfg.HTMLOutput, results)
@@ -785,7 +949,7 @@ func writeReports(cfg *core.Config, results []core.ScanResult) {
 func writeHTMLReport(path string, results []core.ScanResult) {
 	f, err := os.Create(path)
 	if err != nil {
-		fmt.Printf("[!] HTML report error: %v\n", err)
+		output.Error("HTML report: %v", err)
 		return
 	}
 	defer f.Close()
@@ -803,35 +967,48 @@ table{width:100%;border-collapse:collapse}td{padding:4px 8px;vertical-align:top}
 			cls, r.Severity, r.Method, escHTML(r.URL), escHTML(r.Evidence)))
 	}
 	io.WriteString(f, "</table></body></html>")
-	fmt.Printf("[+] HTML report -> %s\n", path)
+	output.Success("HTML report -> %s", path)
 }
 
 func writeJSONReport(path string, results []core.ScanResult) {
 	f, err := os.Create(path)
 	if err != nil {
-		fmt.Printf("[!] JSON report error: %v\n", err)
+		output.Error("JSON report: %v", err)
 		return
 	}
 	defer f.Close()
-	io.WriteString(f, "[\n")
-	for i, r := range results {
-		comma := ""
-		if i < len(results)-1 {
-			comma = ","
-		}
-		io.WriteString(f, fmt.Sprintf(
-			`  {"type":%q,"url":%q,"method":%q,"parameter":%q,"payload":%q,"severity":%q,"evidence":%q,"timestamp":%q}%s`+"\n",
-			r.Type, r.URL, r.Method, r.Parameter, r.Payload, r.Severity, r.Evidence,
-			r.Timestamp.Format(time.RFC3339), comma))
+	type entry struct {
+		Type      string `json:"type"`
+		URL       string `json:"url"`
+		Method    string `json:"method"`
+		Parameter string `json:"parameter"`
+		Payload   string `json:"payload"`
+		Severity  string `json:"severity"`
+		Evidence  string `json:"evidence"`
+		Timestamp string `json:"timestamp"`
 	}
-	io.WriteString(f, "]\n")
-	fmt.Printf("[+] JSON report -> %s\n", path)
+	entries := make([]entry, len(results))
+	for i, r := range results {
+		entries[i] = entry{
+			Type: r.Type, URL: r.URL, Method: r.Method,
+			Parameter: r.Parameter, Payload: r.Payload,
+			Severity: r.Severity, Evidence: r.Evidence,
+			Timestamp: r.Timestamp.Format(time.RFC3339),
+		}
+	}
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(entries); err != nil {
+		output.Error("JSON report encode: %v", err)
+		return
+	}
+	output.Success("JSON report -> %s", path)
 }
 
 func writeCSVReport(path string, results []core.ScanResult) {
 	f, err := os.Create(path)
 	if err != nil {
-		fmt.Printf("[!] CSV report error: %v\n", err)
+		output.Error("CSV report: %v", err)
 		return
 	}
 	defer f.Close()
@@ -842,13 +1019,13 @@ func writeCSVReport(path string, results []core.ScanResult) {
 			csvEscape(r.Parameter), csvEscape(r.Payload), csvEscape(r.Severity),
 			csvEscape(r.Evidence), csvEscape(r.Timestamp.Format(time.RFC3339))))
 	}
-	fmt.Printf("[+] CSV report -> %s\n", path)
+	output.Success("CSV report -> %s", path)
 }
 
 func writeMDReport(path string, results []core.ScanResult) {
 	f, err := os.Create(path)
 	if err != nil {
-		fmt.Printf("[!] Markdown report error: %v\n", err)
+		output.Error("Markdown report: %v", err)
 		return
 	}
 	defer f.Close()
@@ -858,9 +1035,16 @@ func writeMDReport(path string, results []core.ScanResult) {
 	io.WriteString(f, "|---|---|---|---|---|---|\n")
 	for _, r := range results {
 		io.WriteString(f, fmt.Sprintf("| %s | %s | %s | %s | %s | %s |\n",
-			r.Severity, r.Type, r.URL, r.Method, r.Parameter, r.Evidence))
+			mdEscape(r.Severity), mdEscape(r.Type), mdEscape(r.URL),
+			mdEscape(r.Method), mdEscape(r.Parameter), mdEscape(r.Evidence)))
 	}
-	fmt.Printf("[+] Markdown report -> %s\n", path)
+	output.Success("Markdown report -> %s", path)
+}
+
+func mdEscape(s string) string {
+	s = strings.ReplaceAll(s, "|", "\\|")
+	s = strings.ReplaceAll(s, "\n", " ")
+	return s
 }
 
 func escHTML(s string) string {
@@ -869,6 +1053,100 @@ func escHTML(s string) string {
 	s = strings.ReplaceAll(s, ">", "&gt;")
 	s = strings.ReplaceAll(s, "\"", "&quot;")
 	return s
+}
+
+// runSnipe executes ALL scan modules against a single endpoint (deep-dive mode).
+func runSnipe(client *http.Client, cfg *core.Config, targetURL string, templates []engine.Template) []core.ScanResult {
+	target := core.CrawlResult{URL: targetURL}
+	var allResults []core.ScanResult
+	var mu sync.Mutex
+
+	output.Info("Snipe mode: deep-dive scanning %s", targetURL)
+
+	type snipeMod struct {
+		name string
+		fn   func(*http.Client, *core.Config, core.CrawlResult) []core.ScanResult
+	}
+
+	// Phase 1: Fast (analysis only)
+	fast := []snipeMod{
+		{"SecurityHeaders", func(c *http.Client, cf *core.Config, t core.CrawlResult) []core.ScanResult {
+			return modules.CheckSecurityHeaders(c, cf, targetURL)
+		}},
+		{"CORS", func(c *http.Client, cf *core.Config, t core.CrawlResult) []core.ScanResult {
+			return modules.CheckCORS(c, cf, targetURL)
+		}},
+		{"DirScan", func(c *http.Client, cf *core.Config, t core.CrawlResult) []core.ScanResult {
+			return modules.ScanDirs(c, cf, targetURL)
+		}},
+		{"GraphQL", func(c *http.Client, cf *core.Config, t core.CrawlResult) []core.ScanResult {
+			return modules.ScanGraphQL(c, cf, targetURL)
+		}},
+		{"CookieAudit", func(c *http.Client, cf *core.Config, t core.CrawlResult) []core.ScanResult {
+			return modules.AuditCookies(c, cf, targetURL)
+		}},
+		{"SubdomainEnum", func(c *http.Client, cf *core.Config, t core.CrawlResult) []core.ScanResult {
+			return modules.EnumerateSubdomains(c, cf, targetURL)
+		}},
+		{"SubTakeover", func(c *http.Client, cf *core.Config, t core.CrawlResult) []core.ScanResult {
+			return modules.CheckSubdomainTakeover(c, cf, targetURL)
+		}},
+	}
+
+	// Phase 2: Active injection
+	med := []snipeMod{
+		{"SQLi", modules.ScanSQLi},
+		{"XSS", modules.ScanXSS},
+		{"SSRF", modules.ScanSSRF},
+		{"CMDI", modules.ScanCmdInjection},
+		{"LFI", modules.ScanLFI},
+		{"XXE", modules.ScanXXE},
+		{"NoSQLi", modules.ScanNoSQLi},
+		{"SSTI", modules.ScanSSTI},
+		{"JWT", modules.ScanJWT},
+		{"IDOR", modules.ScanIDOR},
+		{"CSRF", func(c *http.Client, cf *core.Config, t core.CrawlResult) []core.ScanResult { return modules.ScanCSRF(cf, t) }},
+		{"FileUpload", modules.ScanFileUpload},
+		{"Deserialize", modules.ScanDeserialize},
+		{"ProtoPollution", modules.ScanProtoPollution},
+		{"CachePoison", modules.ScanCachePoison},
+		{"Smuggling", modules.ScanSmuggling},
+		{"Clutch", modules.ScanClutch},
+	}
+
+	// Phase 3: Heavy (blind/timing)
+	heavy := []snipeMod{
+		{"BlindSQLi", modules.ScanBlindSQLiTime},
+		{"BooleanSQLi", modules.ScanBooleanBlindSQLi},
+	}
+
+	phases := [][]snipeMod{fast, med, heavy}
+	labels := []string{"fast", "medium", "heavy"}
+
+	for pi, mods := range phases {
+		output.Info("Snipe %s: %d module(s)", labels[pi], len(mods))
+		var wg sync.WaitGroup
+		for _, m := range mods {
+			wg.Add(1)
+			go func(mod snipeMod) {
+				defer wg.Done()
+				res := mod.fn(client, cfg, target)
+				if len(res) > 0 {
+					mu.Lock()
+					allResults = append(allResults, res...)
+					mu.Unlock()
+				}
+			}(m)
+		}
+		wg.Wait()
+	}
+
+	// Templates
+	if len(templates) > 0 {
+		allResults = append(allResults, engine.RunTemplates(client, cfg, targetURL, templates)...)
+	}
+
+	return allResults
 }
 
 func csvEscape(s string) string {

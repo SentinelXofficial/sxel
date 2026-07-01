@@ -1,10 +1,10 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/payload"
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"encoding/json"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/pkg/core"
+	"github.com/SentinelXofficial/sxel/pkg/payload"
 	"io"
 	"net/http"
 	"net/url"
@@ -78,7 +78,7 @@ func ScanOpenRedirect(client *http.Client, cfg *core.Config, target core.CrawlRe
 				results = append(results, core.ScanResult{
 					Type: "Open Redirect", URL: testURL,
 					Method: "GET", Parameter: param, Payload: payload,
-					Severity: "MEDIUM",
+					Severity:  "MEDIUM",
 					Evidence:  fmt.Sprintf("redirects to: %s (HTTP %d)", loc, resp.StatusCode),
 					Timestamp: time.Now(),
 				})
@@ -130,7 +130,7 @@ func ScanPathTraversal(client *http.Client, cfg *core.Config, target core.CrawlR
 				results = append(results, core.ScanResult{
 					Type: "Path Traversal", URL: testURL,
 					Method: "GET", Parameter: param, Payload: payload,
-					Severity: "HIGH",
+					Severity:  "HIGH",
 					Evidence:  "system file content found in response (/etc/passwd or win.ini)",
 					Timestamp: time.Now(),
 				})
@@ -185,7 +185,7 @@ func ScanSSTI(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 				results = append(results, core.ScanResult{
 					Type: fmt.Sprintf("Server-Side Template Injection [%s]", t.engine),
 					URL:  testURL, Method: "GET", Parameter: param,
-					Payload:  t.payload, Severity: "HIGH",
+					Payload: t.payload, Severity: "HIGH",
 					Evidence:  fmt.Sprintf("expression %q evaluated to %q", t.payload, t.expected),
 					Timestamp: time.Now(),
 				})
@@ -229,7 +229,7 @@ func ScanSSTI(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 					results = append(results, core.ScanResult{
 						Type: fmt.Sprintf("SSTI via core.Form [%s]", t.engine),
 						URL:  form.Action, Method: form.Method, Parameter: inp.Name,
-						Payload:  t.payload, Severity: "HIGH",
+						Payload: t.payload, Severity: "HIGH",
 						Evidence:  fmt.Sprintf("expression %q evaluated to %q", t.payload, t.expected),
 						Timestamp: time.Now(),
 					})

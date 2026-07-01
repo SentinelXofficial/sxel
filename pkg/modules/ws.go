@@ -1,15 +1,16 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/payload"
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"crypto/tls"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
+	"github.com/SentinelXofficial/sxel/pkg/payload"
+	"github.com/gorilla/websocket"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
-	"github.com/gorilla/websocket"
 )
 
 var (
@@ -47,17 +48,22 @@ func ScanWebSocket(client *http.Client, cfg *core.Config, pageURL string) []core
 	wsURLs := findWSURLs(body)
 	if len(wsURLs) == 0 {
 		if cfg.Verbose {
-			fmt.Printf("  \033[90m[ws] no endpoints found at %s\033[0m\n", pageURL)
+			output.Verbose("[ws] no endpoints found at %s", pageURL)
 		}
 		return results
 	}
-	fmt.Printf("  \033[36m[ws] %d WebSocket endpoint(s) found\033[0m\n", len(wsURLs))
+	output.Info("[ws] %d WebSocket endpoint(s) found\n", len(wsURLs))
 
 	dialer := websocket.Dialer{
 		HandshakeTimeout: time.Duration(cfg.Timeout) * time.Second,
 		TLSClientConfig:  &tls.Config{InsecureSkipVerify: true},
 	}
+	// Include all user-supplied headers so authenticated WebSocket endpoints
+	// (e.g. those behind auth proxies) are reachable.
 	hdr := http.Header{"User-Agent": {cfg.UserAgent}}
+	for k, v := range cfg.Headers {
+		hdr.Set(k, v)
+	}
 	if cfg.Cookie != "" {
 		hdr.Set("Cookie", cfg.Cookie)
 	}
@@ -71,7 +77,7 @@ func ScanWebSocket(client *http.Client, cfg *core.Config, pageURL string) []core
 		}
 		if err != nil {
 			if cfg.Verbose {
-				fmt.Printf("    \033[90m[ws] dial error: %v\033[0m\n", err)
+				output.Verbose("[ws] dial error: %v", err)
 			}
 			continue
 		}
@@ -100,7 +106,6 @@ func ScanWebSocket(client *http.Client, cfg *core.Config, pageURL string) []core
 					Method: "WS", Parameter: "message", Payload: pl,
 					Severity: "HIGH", Evidence: ev, Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ WS-SQLI]\033[0m %s payload=%q\n", wsURL, pl)
 				break SQLiWS
 			}
 		}
@@ -130,7 +135,6 @@ func ScanWebSocket(client *http.Client, cfg *core.Config, pageURL string) []core
 					Severity: "MEDIUM", Evidence: "payload reflected in WS response",
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[33m[✗ WS-XSS]\033[0m %s payload=%q\n", wsURL, pl)
 				break XSSWS
 			}
 		}

@@ -1,11 +1,11 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/pkg/core"
+	"net/http"
 	"net/url"
 	"time"
-	"net/http"
 )
 
 // (type moved to pkg/core)
@@ -62,9 +62,9 @@ func ScanBlindSQLiTime(client *http.Client, cfg *core.Config, target core.CrawlR
 			threshold := baseTime + time.Duration(tp.sleep-1)*time.Second
 			if elapsed >= threshold {
 				results = append(results, core.ScanResult{
-					Type:      fmt.Sprintf("SQL Injection Time-Based Blind [%s]", tp.db),
-					URL:       testURL, Method: "GET", Parameter: param,
-					Payload:  tp.payload, Severity: "HIGH",
+					Type: fmt.Sprintf("SQL Injection Time-Based Blind [%s]", tp.db),
+					URL:  testURL, Method: "GET", Parameter: param,
+					Payload: tp.payload, Severity: "HIGH",
 					Evidence:  fmt.Sprintf("delay %v (baseline %v) HTTP=%d", elapsed.Round(time.Millisecond), baseTime.Round(time.Millisecond), status),
 					Timestamp: time.Now(),
 				})
@@ -108,9 +108,9 @@ func ScanBlindSQLiTime(client *http.Client, cfg *core.Config, target core.CrawlR
 				threshold := baseTime + time.Duration(tp.sleep-1)*time.Second
 				if elapsed >= threshold {
 					results = append(results, core.ScanResult{
-						Type:      fmt.Sprintf("SQL Injection Time-Based Blind via core.Form [%s]", tp.db),
-						URL:       form.Action, Method: form.Method, Parameter: inp.Name,
-						Payload:  tp.payload, Severity: "HIGH",
+						Type: fmt.Sprintf("SQL Injection Time-Based Blind via core.Form [%s]", tp.db),
+						URL:  form.Action, Method: form.Method, Parameter: inp.Name,
+						Payload: tp.payload, Severity: "HIGH",
 						Evidence:  fmt.Sprintf("delay %v (baseline %v) HTTP=%d", elapsed.Round(time.Millisecond), baseTime.Round(time.Millisecond), status),
 						Timestamp: time.Now(),
 					})
@@ -171,10 +171,10 @@ func ScanBooleanBlindSQLi(client *http.Client, cfg *core.Config, target core.Cra
 
 			if lenDiff > 100 || statusDiff {
 				results = append(results, core.ScanResult{
-					Type:      "SQL Injection Boolean-Based Blind",
-					URL:       urlTrue, Method: "GET", Parameter: param,
-					Payload:  fmt.Sprintf("TRUE: %s | FALSE: %s", pr.trueP, pr.falseP),
-					Severity: "HIGH",
+					Type: "SQL Injection Boolean-Based Blind",
+					URL:  urlTrue, Method: "GET", Parameter: param,
+					Payload:   fmt.Sprintf("TRUE: %s | FALSE: %s", pr.trueP, pr.falseP),
+					Severity:  "HIGH",
 					Evidence:  fmt.Sprintf("response diff: %d bytes (status %d vs %d)", lenDiff, statusTrue, statusFalse),
 					Timestamp: time.Now(),
 				})
@@ -228,10 +228,10 @@ func ScanBooleanBlindSQLi(client *http.Client, cfg *core.Config, target core.Cra
 
 				if lenDiff > 100 || statusDiff {
 					results = append(results, core.ScanResult{
-						Type:      "SQL Injection Boolean-Based Blind via core.Form",
-						URL:       form.Action, Method: form.Method, Parameter: inp.Name,
-						Payload:  fmt.Sprintf("TRUE: %s | FALSE: %s", pr.trueP, pr.falseP),
-						Severity: "HIGH",
+						Type: "SQL Injection Boolean-Based Blind via core.Form",
+						URL:  form.Action, Method: form.Method, Parameter: inp.Name,
+						Payload:   fmt.Sprintf("TRUE: %s | FALSE: %s", pr.trueP, pr.falseP),
+						Severity:  "HIGH",
 						Evidence:  fmt.Sprintf("response diff: %d bytes (status %d vs %d)", lenDiff, statusTrue, statusFalse),
 						Timestamp: time.Now(),
 					})

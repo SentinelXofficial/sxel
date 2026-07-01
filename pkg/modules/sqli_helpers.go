@@ -2,10 +2,10 @@ package modules
 
 import (
 	"fmt"
-	"net/http"
-	"strings"
 	"github.com/SentinelXofficial/sxel/pkg/core"
 	"github.com/SentinelXofficial/sxel/pkg/payload"
+	"net/http"
+	"strings"
 )
 
 // DetectSQLi checks body for SQL error patterns.

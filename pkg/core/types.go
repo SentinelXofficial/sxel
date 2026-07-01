@@ -97,20 +97,24 @@ type Config struct {
 	Grpc   bool // --grpc    : probe gRPC reflection + REST gateway
 	Strobe bool // --strobe  : full adaptive deep-dive pipeline
 	Snipe  bool // --snipe   : all modules attack single endpoint simultaneously
+
+	// Template engine
+	Templates   bool   // --templates : run YAML-based template scans
+	TemplateDir string // --template-dir : path to templates directory
 }
 
 type ScanResult struct {
-	Type       string    `json:"type"`
-	URL        string    `json:"url"`
-	Method     string    `json:"method"`
-	Parameter  string    `json:"parameter"`
-	Payload    string    `json:"payload"`
-	Severity   string    `json:"severity"`
-	Evidence   string    `json:"evidence"`
-	Timestamp  time.Time `json:"timestamp"`
-	ParamKey   string    `json:"param_key,omitempty"`
-	ParamValue string    `json:"param_value,omitempty"`
-	Position   string    `json:"position,omitempty"`
+	Type       string            `json:"type"`
+	URL        string            `json:"url"`
+	Method     string            `json:"method"`
+	Parameter  string            `json:"parameter"`
+	Payload    string            `json:"payload"`
+	Severity   string            `json:"severity"`
+	Evidence   string            `json:"evidence"`
+	Timestamp  time.Time         `json:"timestamp"`
+	ParamKey   string            `json:"param_key,omitempty"`
+	ParamValue string            `json:"param_value,omitempty"`
+	Position   string            `json:"position,omitempty"`
 	Extra      map[string]string `json:"extra,omitempty"`
 }
 
@@ -218,9 +222,8 @@ func NewCountingClient(client *http.Client, sent, failed, totalNS *int64) *http.
 		tr = http.DefaultTransport
 	}
 	return &http.Client{
-		Transport: &CountingTransport{Base: tr, Sent: sent, Failed: failed, TotalNS: totalNS},
-		Timeout:   client.Timeout,
+		Transport:     &CountingTransport{Base: tr, Sent: sent, Failed: failed, TotalNS: totalNS},
+		Timeout:       client.Timeout,
 		CheckRedirect: client.CheckRedirect,
 	}
 }
-

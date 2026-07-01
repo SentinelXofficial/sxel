@@ -1,9 +1,10 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"bytes"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"net/url"
 	"strings"
@@ -122,7 +123,7 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 
 	for param := range params {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[nosql-get] param=%s\033[0m\n", param)
+			output.Verbose("[nosql-get] param=%s", param)
 		}
 
 	NoSQLURLLoop:
@@ -152,14 +153,12 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 			for _, marker := range nosqlErrorMarkers {
 				if strings.Contains(trueBodyLow, marker) {
 					results = append(results, core.ScanResult{
-						Type:      "NoSQL Injection (Error-Based)",
-						URL:       trueURL, Method: "GET", Parameter: param,
-						Payload:   op.Label, Severity: "HIGH",
+						Type: "NoSQL Injection (Error-Based)",
+						URL:  trueURL, Method: "GET", Parameter: param,
+						Payload: op.Label, Severity: "HIGH",
 						Evidence:  fmt.Sprintf("MongoDB error marker %q in response (HTTP %d)", marker, trueStatus),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ NOSQL-ERR]\033[0m GET param=%s op=%q marker=%q HTTP=%d\n",
-						param, op.Label, marker, trueStatus)
 					break NoSQLURLLoop
 				}
 			}
@@ -176,14 +175,12 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 				payload := fmt.Sprintf("TRUE: %s%s=%s | FALSE: %s%s=%s",
 					param, op.TrueParam, op.TrueValue, param, op.FalseParam, op.FalseValue)
 				results = append(results, core.ScanResult{
-					Type:      "NoSQL Injection (Boolean-Based)",
-					URL:       trueURL, Method: "GET", Parameter: param,
-					Payload:   payload, Severity: "HIGH",
+					Type: "NoSQL Injection (Boolean-Based)",
+					URL:  trueURL, Method: "GET", Parameter: param,
+					Payload: payload, Severity: "HIGH",
 					Evidence:  fmt.Sprintf("response diff: %d bytes (status %d vs %d) [%s]", lenDiff, trueStatus, falseStatus, op.Label),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ NOSQL-BOOL]\033[0m GET param=%s op=%q diff=%d bytes status=%d→%d\n",
-					param, op.Label, lenDiff, falseStatus, trueStatus)
 				break NoSQLURLLoop
 			}
 		}
@@ -195,7 +192,7 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 		if strings.ToUpper(form.Method) == "GET" {
 			for _, inp := range form.Inputs {
 				if cfg.Verbose {
-					fmt.Printf("    \033[90m[nosql-form-get] %s input=%s\033[0m\n", form.Action, inp.Name)
+					output.Verbose("[nosql-form-get] %s input=%s", form.Action, inp.Name)
 				}
 
 			NoSQLGetFormLoop:
@@ -222,14 +219,12 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 					for _, marker := range nosqlErrorMarkers {
 						if strings.Contains(trueBodyLow, marker) {
 							results = append(results, core.ScanResult{
-								Type:      "NoSQL Injection via core.Form (Error-Based)",
-								URL:       form.Action, Method: "GET", Parameter: inp.Name,
-								Payload:   op.Label, Severity: "HIGH",
+								Type: "NoSQL Injection via core.Form (Error-Based)",
+								URL:  form.Action, Method: "GET", Parameter: inp.Name,
+								Payload: op.Label, Severity: "HIGH",
 								Evidence:  fmt.Sprintf("MongoDB error %q in response (HTTP %d)", marker, trueStatus),
 								Timestamp: time.Now(),
 							})
-							fmt.Printf("  \033[31m[✗ NOSQL-FORM-ERR]\033[0m GET %s input=%s HTTP=%d\n",
-								form.Action, inp.Name, trueStatus)
 							break NoSQLGetFormLoop
 						}
 					}
@@ -240,14 +235,12 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 					}
 					if lenDiff > 150 || trueStatus != falseStatus {
 						results = append(results, core.ScanResult{
-							Type:      "NoSQL Injection via core.Form (Boolean-Based)",
-							URL:       form.Action, Method: "GET", Parameter: inp.Name,
-							Payload:   op.Label, Severity: "HIGH",
+							Type: "NoSQL Injection via core.Form (Boolean-Based)",
+							URL:  form.Action, Method: "GET", Parameter: inp.Name,
+							Payload: op.Label, Severity: "HIGH",
 							Evidence:  fmt.Sprintf("diff: %d bytes (status %d vs %d)", lenDiff, falseStatus, trueStatus),
 							Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[31m[✗ NOSQL-FORM-BOOL]\033[0m GET %s input=%s diff=%d\n",
-							form.Action, inp.Name, lenDiff)
 						break NoSQLGetFormLoop
 					}
 				}
@@ -266,7 +259,7 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 
 	for endpoint := range postEndpoints {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[nosql-json-post] %s\033[0m\n", endpoint)
+			output.Verbose("[nosql-json-post] %s", endpoint)
 		}
 
 	NoSQLJSONLoop:
@@ -290,14 +283,12 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 			for _, marker := range nosqlErrorMarkers {
 				if strings.Contains(trueBodyLow, marker) {
 					results = append(results, core.ScanResult{
-						Type:      "NoSQL Injection (JSON POST — Error-Based)",
-						URL:       endpoint, Method: "POST", Parameter: "body",
-						Payload:   pl.TrueBody, Severity: "HIGH",
+						Type: "NoSQL Injection (JSON POST — Error-Based)",
+						URL:  endpoint, Method: "POST", Parameter: "body",
+						Payload: pl.TrueBody, Severity: "HIGH",
 						Evidence:  fmt.Sprintf("MongoDB error %q in response (HTTP %d)", marker, trueStatus),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ NOSQL-JSON-ERR]\033[0m POST %s marker=%q HTTP=%d\n",
-						endpoint, marker, trueStatus)
 					break NoSQLJSONLoop
 				}
 			}
@@ -306,14 +297,12 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 			if (trueStatus == 200 || trueStatus == 201 || trueStatus == 302) &&
 				(falseStatus == 401 || falseStatus == 403 || falseStatus == 422) {
 				results = append(results, core.ScanResult{
-					Type:      "NoSQL Injection (JSON Auth Bypass)",
-					URL:       endpoint, Method: "POST", Parameter: "body",
-					Payload:   pl.TrueBody, Severity: "CRITICAL",
+					Type: "NoSQL Injection (JSON Auth Bypass)",
+					URL:  endpoint, Method: "POST", Parameter: "body",
+					Payload: pl.TrueBody, Severity: "CRITICAL",
 					Evidence:  fmt.Sprintf("auth bypass: true=%d, false=%d [%s]", trueStatus, falseStatus, pl.Label),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ NOSQL-AUTH-BYPASS]\033[0m POST %s [%s] HTTP %d→%d\n",
-					endpoint, pl.Label, falseStatus, trueStatus)
 				break NoSQLJSONLoop
 			}
 
@@ -324,14 +313,12 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 			}
 			if lenDiff > 200 && trueStatus == falseStatus {
 				results = append(results, core.ScanResult{
-					Type:      "NoSQL Injection (JSON POST — Boolean-Based)",
-					URL:       endpoint, Method: "POST", Parameter: "body",
-					Payload:   pl.TrueBody, Severity: "HIGH",
+					Type: "NoSQL Injection (JSON POST — Boolean-Based)",
+					URL:  endpoint, Method: "POST", Parameter: "body",
+					Payload: pl.TrueBody, Severity: "HIGH",
 					Evidence:  fmt.Sprintf("response diff: %d bytes (both HTTP %d) [%s]", lenDiff, trueStatus, pl.Label),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ NOSQL-JSON-BOOL]\033[0m POST %s diff=%d bytes [%s]\n",
-					endpoint, lenDiff, pl.Label)
 				break NoSQLJSONLoop
 			}
 		}

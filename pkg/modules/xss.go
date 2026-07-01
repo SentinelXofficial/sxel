@@ -1,12 +1,12 @@
 package modules
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/pkg/core"
 	"github.com/SentinelXofficial/sxel/pkg/payload"
 )
@@ -25,7 +25,7 @@ func ScanXSS(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 	}
 	for param := range params {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[xss-get] param=%s\033[0m\n", param)
+			output.Verbose("[xss-get] param=%s", param)
 		}
 	XSSParamLoop:
 		for _, base := range payload.XSSPayloads {
@@ -38,7 +38,7 @@ func ScanXSS(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 				if err != nil {
 					continue
 				}
-				body, status, err := core.DoGET(client, cfg, testURL)
+				body, _, err := core.DoGET(client, cfg, testURL)
 				if err != nil {
 					continue
 				}
@@ -49,7 +49,6 @@ func ScanXSS(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 						Severity: "MEDIUM", Evidence: "payload reflected unencoded",
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[33m[✗ XSS]\033[0m GET param=%s payload=%q HTTP=%d\n", param, pld, status)
 					break XSSParamLoop
 				}
 			}
@@ -67,15 +66,14 @@ func ScanXSS(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 				}
 				for _, pld := range variants {
 					var body string
-					var status int
-					var err error
+								var err error
 					if form.Method == "POST" {
 						d := core.FormDefaults(form)
 						d.Set(inp.Name, pld)
-						body, status, err = core.DoPOST(client, cfg, form.Action, d)
+						body, _, err = core.DoPOST(client, cfg, form.Action, d)
 					} else {
 						testURL, _ := core.SetParam(form.Action, inp.Name, pld)
-						body, status, err = core.DoGET(client, cfg, testURL)
+						body, _, err = core.DoGET(client, cfg, testURL)
 					}
 					if err != nil {
 						continue
@@ -87,8 +85,6 @@ func ScanXSS(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 							Severity: "MEDIUM", Evidence: "payload reflected unencoded",
 							Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[33m[✗ XSS-FORM]\033[0m %s %s input=%s HTTP=%d\n",
-							form.Method, form.Action, inp.Name, status)
 						break XSSFormLoop
 					}
 				}

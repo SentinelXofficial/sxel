@@ -1,9 +1,9 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/payload"
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/pkg/core"
+	"github.com/SentinelXofficial/sxel/pkg/payload"
 	"io"
 	"net/http"
 	"net/url"
@@ -362,7 +362,7 @@ func CheckCORS(client *http.Client, cfg *core.Config, targetURL string) []core.S
 			results = append(results, core.ScanResult{
 				Type: "CORS Misconfiguration (Wildcard)", URL: targetURL,
 				Method: "GET", Parameter: "Origin", Payload: origin,
-				Severity: "MEDIUM",
+				Severity:  "MEDIUM",
 				Evidence:  "Access-Control-Allow-Origin: *",
 				Timestamp: time.Now(),
 			})
@@ -415,7 +415,7 @@ func CheckCORS(client *http.Client, cfg *core.Config, targetURL string) []core.S
 					results = append(results, core.ScanResult{
 						Type: "CORS — Preflight Accepted (Extended)", URL: targetURL,
 						Method: "OPTIONS", Parameter: "Origin + Request-Method",
-						Payload: "Origin: https://evil.com; ACM: GET; ACH: X-Custom-Auth",
+						Payload:  "Origin: https://evil.com; ACM: GET; ACH: X-Custom-Auth",
 						Severity: sevPre, Evidence: evPre, Timestamp: time.Now(),
 					})
 					fmt.Printf("  [CORS-EXT] preflight accepted at %s (%s)\n", targetURL, sevPre)
@@ -439,9 +439,9 @@ func CheckCORS(client *http.Client, cfg *core.Config, targetURL string) []core.S
 				results = append(results, core.ScanResult{
 					Type: "CORS — Private Network Access Allowed", URL: targetURL,
 					Method: "GET", Parameter: "Origin",
-					Payload: "Access-Control-Request-Private-Network: true",
-					Severity: "HIGH",
-					Evidence: "Access-Control-Allow-Private-Network: true — allows requests from private network contexts",
+					Payload:   "Access-Control-Request-Private-Network: true",
+					Severity:  "HIGH",
+					Evidence:  "Access-Control-Allow-Private-Network: true — allows requests from private network contexts",
 					Timestamp: time.Now(),
 				})
 				fmt.Printf("  [CORS-EXT] private network access allowed at %s\n", targetURL)
@@ -477,7 +477,7 @@ func CheckHTTPMethods(client *http.Client, cfg *core.Config, targetURL string) [
 			results = append(results, core.ScanResult{
 				Type: "Dangerous HTTP Method Allowed", URL: targetURL,
 				Method: method, Parameter: "method", Payload: method,
-				Severity: sev,
+				Severity:  sev,
 				Evidence:  fmt.Sprintf("HTTP %d returned for %s", resp.StatusCode, method),
 				Timestamp: time.Now(),
 			})
@@ -509,12 +509,12 @@ func ScanHostHeaderInjection(client *http.Client, cfg *core.Config, targetURL st
 		results = append(results, core.ScanResult{
 			Type: "Host Header Injection", URL: targetURL,
 			Method: "GET", Parameter: "Host", Payload: evil,
-			Severity: "MEDIUM",
+			Severity:  "MEDIUM",
 			Evidence:  "injected Host value reflected in response or redirect",
 			Timestamp: time.Now(),
 		})
 		fmt.Printf("  [HOST-INJECT] reflection at %s\n", targetURL)
-		}
+	}
 	return results
 }
 
@@ -533,18 +533,20 @@ func ScanCRLFInjection(client *http.Client, cfg *core.Config, target core.CrawlR
 	p, _ := url.Parse(target.URL)
 	params, _ := url.ParseQuery(p.RawQuery)
 
+	// Create redirect-suppressing client once, not per iteration
+	noRedir := &http.Client{
+		Timeout:   client.Timeout,
+		Transport: client.Transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
 	for param := range params {
 		for _, payload := range crlfPayloads {
 			testURL, err := core.SetParam(target.URL, param, payload)
 			if err != nil {
 				continue
-			}
-			noRedir := &http.Client{
-				Timeout:   client.Timeout,
-				Transport: client.Transport,
-				CheckRedirect: func(*http.Request, []*http.Request) error {
-					return http.ErrUseLastResponse
-				},
 			}
 			req, err := http.NewRequest("GET", testURL, nil)
 			if err != nil {
@@ -562,7 +564,7 @@ func ScanCRLFInjection(client *http.Client, cfg *core.Config, target core.CrawlR
 				results = append(results, core.ScanResult{
 					Type: "CRLF Injection / Header Injection", URL: testURL,
 					Method: "GET", Parameter: param, Payload: payload,
-					Severity: "HIGH",
+					Severity:  "HIGH",
 					Evidence:  "injected header X-Injected found in response",
 					Timestamp: time.Now(),
 				})
@@ -573,4 +575,3 @@ func ScanCRLFInjection(client *http.Client, cfg *core.Config, target core.CrawlR
 	}
 	return results
 }
-

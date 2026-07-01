@@ -1,13 +1,13 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"strings"
 	"time"
@@ -303,7 +303,6 @@ func testJWTToken(
 			Evidence:  fmt.Sprintf("HTTP %d accepted (baseline without token: %d) — %s", resp.StatusCode, noAuthStatus, evidence),
 			Timestamp: time.Now(),
 		}
-		fmt.Printf("  \033[31m[✗ JWT]\033[0m %s — %s\n", vulnType, evidence)
 		return result
 	}
 	return nil

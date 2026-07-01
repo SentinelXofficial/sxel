@@ -1,9 +1,10 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"bytes"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"strings"
 	"time"
@@ -94,9 +95,9 @@ func doXMLPOST(client *http.Client, cfg *core.Config, rawURL, body, contentType 
 // XML External Entity injection vulnerabilities.
 //
 // Detection strategy:
-//   1. Send XXE payload with each content-type and look for /etc/passwd markers.
-//   2. If no marker matches, compare body length with baseline — a significant
-//      delta is a weak signal worth flagging at MEDIUM severity.
+//  1. Send XXE payload with each content-type and look for /etc/passwd markers.
+//  2. If no marker matches, compare body length with baseline — a significant
+//     delta is a weak signal worth flagging at MEDIUM severity.
 func ScanXXE(client *http.Client, cfg *core.Config, target core.CrawlResult) []core.ScanResult {
 	var results []core.ScanResult
 
@@ -112,7 +113,7 @@ func ScanXXE(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 
 	for endpoint := range postEndpoints {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[xxe] probing %s\033[0m\n", endpoint)
+			output.Verbose("[xxe] probing %s", endpoint)
 		}
 
 		// Baseline: a benign XML body to get reference length and content.
@@ -149,14 +150,12 @@ func ScanXXE(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 					if strings.Contains(bodyLow, strings.ToLower(marker)) &&
 						!strings.Contains(strings.ToLower(baselineBody), strings.ToLower(marker)) {
 						results = append(results, core.ScanResult{
-							Type:      "XXE (XML External Entity Injection)",
-							URL:       endpoint, Method: "POST", Parameter: ct,
-							Payload:   pl.Label, Severity: "CRITICAL",
+							Type: "XXE (XML External Entity Injection)",
+							URL:  endpoint, Method: "POST", Parameter: ct,
+							Payload: pl.Label, Severity: "CRITICAL",
 							Evidence:  fmt.Sprintf("marker %q found in response (HTTP %d)", marker, status),
 							Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[31m[✗ XXE]\033[0m %s content-type=%s payload=%q marker=%q HTTP=%d\n",
-							endpoint, ct, pl.Label, marker, status)
 						break XXEEndpointLoop
 					}
 				}
@@ -170,14 +169,12 @@ func ScanXXE(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 				}
 				if lenDiff > 200 && status != baselineStatus {
 					results = append(results, core.ScanResult{
-						Type:      "XXE (Potential — Anomalous Response)",
-						URL:       endpoint, Method: "POST", Parameter: ct,
-						Payload:   pl.Label, Severity: "MEDIUM",
+						Type: "XXE (Potential — Anomalous Response)",
+						URL:  endpoint, Method: "POST", Parameter: ct,
+						Payload: pl.Label, Severity: "MEDIUM",
 						Evidence:  fmt.Sprintf("response diff: %d bytes, status %d → %d", lenDiff, baselineStatus, status),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[33m[? XXE-ANOM]\033[0m %s content-type=%s diff=%d bytes status=%d→%d\n",
-						endpoint, ct, lenDiff, baselineStatus, status)
 					break XXEEndpointLoop
 				}
 			}

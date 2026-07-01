@@ -1,8 +1,9 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"io"
 	"net/http"
 	"net/url"
@@ -86,7 +87,7 @@ func ScanCachePoison(client *http.Client, cfg *core.Config, target core.CrawlRes
 		if resp.Header.Get(hdr) != "" {
 			hasCache = true
 			if cfg.Verbose {
-				fmt.Printf("  \033[90m[cache-poison] cache detected: %s=%s\033[0m\n", hdr, resp.Header.Get(hdr))
+				output.Verbose("[cache-poison] cache detected: %s=%s", hdr, resp.Header.Get(hdr))
 			}
 			break
 		}
@@ -150,7 +151,6 @@ func ScanCachePoison(client *http.Client, cfg *core.Config, target core.CrawlRes
 					Evidence:  evidence,
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[31m[✗ CACHE-POISON]\033[0m header=%s payload=%q reflected\n", hdrName, val)
 				break // one finding per header is enough
 			}
 		}
@@ -185,7 +185,6 @@ func ScanCachePoison(client *http.Client, cfg *core.Config, target core.CrawlRes
 					Evidence:  fmt.Sprintf("payload %q reflected via %s header", val, hdrName),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  \033[33m[✗ CACHE-POISON]\033[0m header=%s payload=%q reflected\n", hdrName, val)
 				break
 			}
 		}
@@ -223,7 +222,6 @@ func ScanCachePoison(client *http.Client, cfg *core.Config, target core.CrawlRes
 				Evidence:  fmt.Sprintf("Host %q reflected in absolute URLs in response body — cache poisoning possible", val),
 				Timestamp: time.Now(),
 			})
-			fmt.Printf("  \033[31m[✗ CACHE-POISON]\033[0m Host header %q reflected in response\n", val)
 		}
 	}
 

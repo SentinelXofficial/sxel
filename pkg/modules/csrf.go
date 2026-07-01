@@ -1,8 +1,8 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"net/url"
 	"strings"
@@ -67,7 +67,6 @@ func ScanCSRF(cfg *core.Config, target core.CrawlResult) []core.ScanResult {
 				Timestamp: time.Now(),
 			})
 			if cfg.Verbose {
-				fmt.Printf("  \033[31m[✗ CSRF]\033[0m %s %s — no token field in form\n", method, action)
 			}
 			continue
 		}
@@ -103,7 +102,6 @@ func ScanCSRF(cfg *core.Config, target core.CrawlResult) []core.ScanResult {
 				Timestamp: time.Now(),
 			})
 			if cfg.Verbose {
-				fmt.Printf("  \033[31m[✗ CSRF]\033[0m %s %s — token %q not enforced\n", method, action, csrfField)
 			}
 		}
 	}
@@ -127,8 +125,9 @@ func testCSRFEnforcement(form core.Form, action, csrfField, pageURL string, cfg 
 			}
 			data.Set(inp.Name, val)
 		}
-		// Use a client that follows redirects to see the final outcome
-		client := &http.Client{Timeout: time.Duration(cfg.Timeout) * time.Second}
+		// Use the same client configuration as the rest of the scanner
+		// (preserves proxy, TLS skip-verify, and redirect behaviour).
+		client := core.NewHTTPClient(cfg)
 		req, err := http.NewRequest("POST", action, strings.NewReader(data.Encode()))
 		if err != nil {
 			return true // assume enforced

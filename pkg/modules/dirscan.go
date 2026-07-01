@@ -1,9 +1,12 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"bufio"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/color"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -99,7 +102,7 @@ type DirScanResult struct {
 func ScanDirs(client *http.Client, cfg *core.Config, target string) []core.ScanResult {
 	wordlist, err := loadWordlist(cfg.Wordlist)
 	if err != nil {
-		fmt.Printf("\033[31m[!] Cannot load wordlist %q: %v — falling back to built-in\033[0m\n", cfg.Wordlist, err)
+		output.Error("Cannot load wordlist %q: %v — falling back to built-in \n", cfg.Wordlist, err)
 		wordlist = BuiltinWordlist
 	}
 
@@ -113,9 +116,13 @@ func ScanDirs(client *http.Client, cfg *core.Config, target string) []core.ScanR
 	base.Fragment = ""
 	baseStr := strings.TrimRight(base.String(), "/")
 
-	fmt.Printf("\033[36m[*] DirScan     : %s (%d paths, %d workers)\033[0m\n",
-		baseStr, len(wordlist), cfg.Threads)
+	output.Info("[*] DirScan     : %s (%d paths, %d workers)\n", baseStr, len(wordlist), cfg.Threads)
 
+	// Establish a baseline using a random non-existent path so we can filter
+	// out SPA catch-all 200s and WAF blanket 403s that return the same status
+	// and similar body length for every path.
+	randPath := fmt.Sprintf("/sxsc-dirscan-baseline-%d", rand.Int63n(9999999))
+	baseStatus, baseLen, _ := dirProbe(client, cfg, baseStr+randPath)
 
 	type job struct{ path string }
 	jobs := make(chan job, len(wordlist))
@@ -144,8 +151,14 @@ func ScanDirs(client *http.Client, cfg *core.Config, target string) []core.ScanR
 				}
 				probeURL := baseStr + "/" + j.path
 				status, cLen, cType := dirProbe(client, cfg, probeURL)
-				
+
 				if status == 0 || status == 404 {
+					continue
+				}
+				// Filter SPA catch-all 200s and WAF blanket blocks:
+				// if the baseline (random nonexistent path) returned the same
+				// status AND similar body length, this path is likely a false hit.
+				if status == baseStatus && absInt(cLen-baseLen) < 100 {
 					continue
 				}
 				hit := DirScanResult{
@@ -162,7 +175,6 @@ func ScanDirs(client *http.Client, cfg *core.Config, target string) []core.ScanR
 		}()
 	}
 	wg.Wait()
-	
 
 	// Convert DirScanResult → core.ScanResult
 	var results []core.ScanResult
@@ -181,7 +193,7 @@ func ScanDirs(client *http.Client, cfg *core.Config, target string) []core.ScanR
 		})
 	}
 
-	fmt.Printf("\033[36m[*] DirScan     : %d path(s) found\033[0m\n", len(hits))
+	output.Info("[*] DirScan     : %d path(s) found\n", len(hits))
 	return results
 }
 
@@ -243,14 +255,22 @@ func dirSeverity(status int, rawURL string) string {
 func statusLabel(status int) string {
 	switch {
 	case status == 200:
-		return "\033[32m[+]\033[0m"
+		return color.Green("[+]")
 	case status == 301 || status == 302 || status == 307:
-		return "\033[33m[~]\033[0m"
+		return color.Yellow("[~]")
 	case status == 403:
-		return "\033[33m[!]\033[0m"
+		return color.Yellow("[!]")
 	default:
-		return "\033[90m[?]\033[0m"
+		return color.Gray("[?]")
 	}
+}
+
+// absInt returns the absolute value of x.
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // loadWordlist reads a wordlist file (one path per line, # comments ignored).

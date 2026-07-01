@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/SentinelXofficial/sxel/internal/color"
+	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/internal/version"
 )
 
@@ -15,24 +17,34 @@ func Print() {
   / ___/___  ____  / /_(_)___  ___  / / | |/ /
   \__ \/ _ \/ __ \/ __/ / __ \/ _ \/ /  |   /
  ___/ /  __/ / / / /_/ / / / /  __/ /___/   |
-/____/\___/_/ /_/\__/_/_/ /_/\___/_____/_/|_/
-
-  sxel — Web Vulnerability Scanner`)
+/____/\___/_/ /_/\__/_/_/ /_/\___/_____/_/|_/`)
+	fmt.Println()
 
 	latest := fetchLatest()
+	versionLine := fmt.Sprintf("sxel — Web Vulnerability Scanner  %s", color.Red(version.Current))
 	if latest == "" {
-		fmt.Printf("  Version: \033[31m%s\033[0m\n\n", version.Current)
+		versionLine += ""
 	} else if latest == version.Current {
-		fmt.Printf("  Version: \033[31m%s\033[0m \033[32m(latest)\033[0m\n\n", version.Current)
+		versionLine += "  " + color.Green("(latest)")
 	} else {
-		fmt.Printf("  Version: \033[31m%s\033[0m \033[33m(outdated — latest: %s)\033[0m\n", version.Current, latest)
-		fmt.Printf("  Run: \033[33msxel --update\033[0m\n\n")
+		versionLine += "  " + color.BoldYellow(fmt.Sprintf("(outdated — latest: %s)", latest))
 	}
+	fmt.Println("  " + versionLine)
+	fmt.Println()
+
+	if latest != "" && latest != version.Current {
+		fmt.Printf("  Run: %s\n\n", color.Yellow("sxel --update"))
+	}
+
+	output.Info("sxel %s started", version.Current)
 }
 
 func fetchLatest() string {
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, _ := http.NewRequest("GET", "https://api.github.com/repos/"+version.Repo+"/releases/latest", nil)
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/"+version.Repo+"/releases/latest", nil)
+	if err != nil {
+		return ""
+	}
 	req.Header.Set("User-Agent", "sxel")
 	req.Header.Set("Accept", "application/vnd.github+json")
 	resp, err := client.Do(req)

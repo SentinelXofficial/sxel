@@ -1,8 +1,9 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"net/url"
 	"strings"
@@ -68,9 +69,12 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 
 	for param := range params {
 		if cfg.Verbose {
-			fmt.Printf("    \033[90m[cmdi-get] param=%s\033[0m\n", param)
+			output.Verbose("[cmdi-get] param=%s", param)
 		}
-		baseline, _, err := core.DoGET(client, cfg, target.URL); if err != nil || baseline == "" { continue }
+		baseline, _, err := core.DoGET(client, cfg, target.URL)
+		if err != nil || baseline == "" {
+			continue
+		}
 
 		// Response-based
 	CMDiURLResp:
@@ -86,14 +90,12 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 			for _, marker := range pl.Markers {
 				if strings.Contains(body, marker) && !strings.Contains(baseline, marker) {
 					results = append(results, core.ScanResult{
-						Type:      "Command Injection",
-						URL:       testURL, Method: "GET", Parameter: param,
-						Payload:   pl.Payload, Severity: "CRITICAL",
+						Type: "Command Injection",
+						URL:  testURL, Method: "GET", Parameter: param,
+						Payload: pl.Payload, Severity: "CRITICAL",
 						Evidence:  fmt.Sprintf("marker %q reflected in response (HTTP %d)", marker, status),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ CMDI]\033[0m GET param=%s payload=%q marker=%q HTTP=%d\n",
-						param, pl.Payload, marker, status)
 					break CMDiURLResp
 				}
 			}
@@ -121,14 +123,13 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 				threshold := baseTime + time.Duration(pl.Sleep-1)*time.Second
 				if elapsed >= threshold {
 					results = append(results, core.ScanResult{
-						Type:      "Command Injection (Blind/Time-Based)",
-						URL:       testURL, Method: "GET", Parameter: param,
-						Payload:   pl.Payload, Severity: "CRITICAL",
+						Type: "Command Injection (Blind/Time-Based)",
+						URL:  testURL, Method: "GET", Parameter: param,
+						Payload: pl.Payload, Severity: "CRITICAL",
 						Evidence:  fmt.Sprintf("delay %v >= threshold %v [%s] HTTP=%d", elapsed.Round(time.Millisecond), threshold, pl.OS, status),
 						Timestamp: time.Now(),
 					})
-					fmt.Printf("  \033[31m[✗ CMDI-BLIND]\033[0m GET param=%s delay=%v\n",
-						param, elapsed.Round(time.Millisecond))
+					output.VulnInline("CMDI-BLIND", "GET param=%s delay=%v\n", param, elapsed.Round(time.Millisecond))
 					break CMDiURLTime
 				}
 			}
@@ -137,22 +138,20 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 
 	// ── Forms ──────────────────────────────────────────────────────────────
 	for _, form := range target.Forms {
+		// Fetch baseline once per form, not per input — avoids redundant requests.
+		var baseline string
+		var baseErr error
+		if form.Method == "POST" {
+			baseline, _, baseErr = core.DoPOST(client, cfg, form.Action, core.FormDefaults(form))
+		} else {
+			baseline, _, baseErr = core.DoGET(client, cfg, form.Action)
+		}
+		if baseErr != nil || baseline == "" {
+			continue
+		}
 		for _, inp := range form.Inputs {
 			if cfg.Verbose {
-				fmt.Printf("    \033[90m[cmdi-form] %s %s input=%s\033[0m\n",
-					form.Method, form.Action, inp.Name)
-			}
-
-			// Baseline for this form
-			var baseline string
-			var baseErr error
-			if form.Method == "POST" {
-				baseline, _, baseErr = core.DoPOST(client, cfg, form.Action, core.FormDefaults(form))
-			} else {
-				baseline, _, baseErr = core.DoGET(client, cfg, form.Action)
-			}
-			if baseErr != nil || baseline == "" {
-				continue
+				output.Verbose("[cmdi-form] %s %s input=%s\n", form.Method, form.Action, inp.Name)
 			}
 
 			// Response-based
@@ -175,14 +174,12 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 				for _, marker := range pl.Markers {
 					if strings.Contains(body, marker) && !strings.Contains(baseline, marker) {
 						results = append(results, core.ScanResult{
-							Type:      "Command Injection via core.Form",
-							URL:       form.Action, Method: form.Method, Parameter: inp.Name,
-							Payload:   pl.Payload, Severity: "CRITICAL",
+							Type: "Command Injection via core.Form",
+							URL:  form.Action, Method: form.Method, Parameter: inp.Name,
+							Payload: pl.Payload, Severity: "CRITICAL",
 							Evidence:  fmt.Sprintf("marker %q reflected in response (HTTP %d)", marker, status),
 							Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[31m[✗ CMDI-FORM]\033[0m %s %s input=%s marker=%q HTTP=%d\n",
-							form.Method, form.Action, inp.Name, marker, status)
 						break CMDiFormResp
 					}
 				}
@@ -219,14 +216,13 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 					threshold := baseTime + time.Duration(pl.Sleep-1)*time.Second
 					if elapsed >= threshold {
 						results = append(results, core.ScanResult{
-							Type:      "Command Injection via core.Form (Blind/Time-Based)",
-							URL:       form.Action, Method: form.Method, Parameter: inp.Name,
-							Payload:   pl.Payload, Severity: "CRITICAL",
+							Type: "Command Injection via core.Form (Blind/Time-Based)",
+							URL:  form.Action, Method: form.Method, Parameter: inp.Name,
+							Payload: pl.Payload, Severity: "CRITICAL",
 							Evidence:  fmt.Sprintf("delay %v >= threshold %v [%s] HTTP=%d", elapsed.Round(time.Millisecond), threshold, pl.OS, status),
 							Timestamp: time.Now(),
 						})
-						fmt.Printf("  \033[31m[✗ CMDI-FORM-BLIND]\033[0m %s %s input=%s delay=%v\n",
-							form.Method, form.Action, inp.Name, elapsed.Round(time.Millisecond))
+						output.VulnInline("CMDI-FORM-BLIND", "%s %s input=%s delay=%v\n", form.Method, form.Action, inp.Name, elapsed.Round(time.Millisecond))
 						break CMDiFormTime
 					}
 				}

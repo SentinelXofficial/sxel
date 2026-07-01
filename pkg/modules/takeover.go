@@ -1,8 +1,10 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/color"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net"
 	"net/http"
 	"strings"
@@ -161,8 +163,7 @@ func CheckSubdomainTakeover(client *http.Client, cfg *core.Config, targetURL str
 	results = append(results, checkTakeoverCNAME(host, targetURL)...)
 
 	// ── 2. Check built-in subdomain list ───────────────────────────────────
-	fmt.Printf("  \033[36m[takeover] Checking %d common subdomains for %s...\033[0m\n",
-		len(builtinSubdomains), host)
+	output.Info("[takeover] Checking %d common subdomains for %s...", len(builtinSubdomains), host)
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -204,14 +205,13 @@ func CheckSubdomainTakeover(client *http.Client, cfg *core.Config, targetURL str
 					Timestamp: time.Now(),
 				})
 				mu.Unlock()
-				fmt.Printf("  \033[31m[✗ TAKEOVER]\033[0m %s → %s [%s]\n", name, cname, svc.Name)
 			}
 		}(candidate)
 	}
 	wg.Wait()
 
 	if len(results) == 0 {
-		fmt.Printf("  \033[32m[takeover] No dangling subdomains detected\033[0m\n")
+		fmt.Printf("  %s\n", color.Green("[takeover] No dangling subdomains detected"))
 	}
 	return results
 }

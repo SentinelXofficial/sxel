@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,6 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SentinelXofficial/sxel/internal/color"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"golang.org/x/net/html"
 )
 
@@ -30,8 +32,6 @@ func NewCrawler(client *http.Client, cfg *core.Config) *Crawler {
 }
 
 // Crawl performs BFS crawling up to maxDepth, returns all found pages+forms.
-// Uses a ring-buffer queue (head index) to avoid the GC-unfriendly queue[1:]
-// pattern that leaks memory on large crawls.
 func (c *Crawler) Crawl(startURL string, maxDepth int) []core.CrawlResult {
 	if p, err := url.Parse(startURL); err == nil {
 		c.baseHost = p.Host
@@ -51,7 +51,7 @@ func (c *Crawler) Crawl(startURL string, maxDepth int) []core.CrawlResult {
 	for head < len(queue) {
 		if c.cfg.MaxPages > 0 && len(results) >= c.cfg.MaxPages {
 			if c.cfg.Verbose {
-				fmt.Printf("  \033[90m[crawl] --max-pages limit (%d) reached\033[0m\n", c.cfg.MaxPages)
+				output.Verbose("[crawl] --max-pages limit (%d) reached", c.cfg.MaxPages)
 			}
 			break
 		}
@@ -70,12 +70,11 @@ func (c *Crawler) Crawl(startURL string, maxDepth int) []core.CrawlResult {
 			continue
 		}
 		if c.cfg.Verbose {
-			fmt.Printf("  \033[90m[crawl] depth=%d %s\033[0m\n", item.depth, item.u)
+			output.Verbose("[crawl] depth=%d %s", item.depth, item.u)
 		}
 
-		// Real-time progress tick (every 80ms to avoid flooding terminal)
 		if time.Since(lastPrint) > 80*time.Millisecond {
-			fmt.Printf("\r\033[K[*] crawl: %d pages, %d queued", len(results), len(queue)-head)
+			fmt.Printf("\r\033[K%s crawl: %d pages, %d queued", color.Cyan("[*]"), len(results), len(queue)-head)
 			si++
 			lastPrint = time.Now()
 		}
@@ -83,7 +82,7 @@ func (c *Crawler) Crawl(startURL string, maxDepth int) []core.CrawlResult {
 		links, forms, err := c.fetchPage(item.u)
 		if err != nil {
 			if c.cfg.Verbose {
-				fmt.Printf("  \033[90m[crawl-err] %v\033[0m\n", err)
+				output.Verbose("[crawl-err] %v", err)
 			}
 			continue
 		}
@@ -104,14 +103,12 @@ func (c *Crawler) Crawl(startURL string, maxDepth int) []core.CrawlResult {
 			}
 		}
 
-		// Periodic compaction: when head grows past 1000 discarded entries,
-		// compact the queue to let the GC reclaim the dequeued items.
 		if head > 1000 {
 			queue = queue[head:]
 			head = 0
 		}
 	}
-	fmt.Printf("\r\033[K[+] Crawled %d page(s), %d form(s)\n", len(results), countForms(results))
+	fmt.Printf("\r\033[K%s Crawled %d page(s), %d form(s)\n", color.Green("[+]"), len(results), countForms(results))
 	return results
 }
 
@@ -164,7 +161,6 @@ func (c *Crawler) extractLinks(body, baseURL string) []string {
 	return links
 }
 
-// ExtractForms parses all <form> elements with their inputs
 func ExtractForms(body, baseURL string) []core.Form {
 	var forms []core.Form
 	base, _ := url.Parse(baseURL)
@@ -214,7 +210,7 @@ func ExtractForms(body, baseURL string) []core.Form {
 						}
 					}
 				}
-				for c := ch.FirstChild; c != nil; c = c.NextSibling {
+				for c := ch.FirstChild; c != nil; c = ch.NextSibling {
 					gather(c)
 				}
 			}
@@ -232,7 +228,6 @@ func ExtractForms(body, baseURL string) []core.Form {
 	return forms
 }
 
-// FetchForms fetches a single page and returns its forms
 func FetchForms(client *http.Client, cfg *core.Config, pageURL string) ([]core.Form, error) {
 	req, err := http.NewRequest("GET", pageURL, nil)
 	if err != nil {
@@ -263,11 +258,6 @@ func ResolveURL(base *url.URL, href string) string {
 	return base.ResolveReference(ref).String()
 }
 
-// isInScope returns true if link should be crawled.
-// Logic:
-//  1. Explicit --out-of-scope patterns are checked first and win.
-//  2. If --scope patterns are set, link must match at least one.
-//  3. Fall back to same-host check when no scope patterns given.
 func (c *Crawler) IsInScope(link string) bool {
 	p, err := url.Parse(link)
 	if err != nil {
@@ -275,14 +265,12 @@ func (c *Crawler) IsInScope(link string) bool {
 	}
 	host := p.Host
 
-	// --- out-of-scope wins unconditionally ---
 	for _, pat := range c.cfg.OutOfScope {
 		if MatchScope(pat, host, link) {
 			return false
 		}
 	}
 
-	// --- explicit scope must match ---
 	if len(c.cfg.Scope) > 0 {
 		for _, pat := range c.cfg.Scope {
 			if MatchScope(pat, host, link) {
@@ -292,34 +280,24 @@ func (c *Crawler) IsInScope(link string) bool {
 		return false
 	}
 
-	// --- default: same host ---
 	return host == c.baseHost
 }
 
-// matchScope tests host / fullURL against a pattern.
-// Patterns supported:
-//   - "*.example.com"      → any subdomain of example.com
-//   - "example.com"        → exact host match
-//   - "http://example.com/api*" → URL prefix match (trailing * stripped)
 func MatchScope(pattern, host, fullURL string) bool {
 	pat := strings.TrimSpace(pattern)
 	if pat == "" {
 		return false
 	}
-	// URL prefix pattern (contains "://")
 	if strings.Contains(pat, "://") {
 		prefix := strings.TrimSuffix(pat, "*")
 		return strings.HasPrefix(fullURL, prefix)
 	}
-	// Wildcard subdomain: *.example.com
 	if strings.HasPrefix(pat, "*.") {
-		suffix := pat[1:] // ".example.com"
+		suffix := pat[1:]
 		return strings.HasSuffix(host, suffix)
 	}
-	// Exact host match
 	return host == pat
 }
-
 
 func countForms(results []core.CrawlResult) int {
 	n := 0

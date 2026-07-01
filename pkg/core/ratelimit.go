@@ -39,17 +39,21 @@ func NewRateLimiter(rps int) *RateLimiter {
 	return rl
 }
 
-// Wait blocks until the rate limiter grants a token.
+// Wait blocks until the rate limiter grants a token or the limiter is closed.
+// After Close() is called, Wait() returns immediately to prevent goroutine leaks.
 func (rl *RateLimiter) Wait() {
 	if rl != nil {
-		<-rl.tokens
+		select {
+		case <-rl.tokens:
+		case <-rl.done:
+		}
 	}
 }
 
 // Close stops the background goroutine.  Safe to call on a nil RateLimiter.
+// Pending and future Wait() calls will return immediately after Close().
 func (rl *RateLimiter) Close() {
 	if rl != nil {
 		close(rl.done)
 	}
 }
-

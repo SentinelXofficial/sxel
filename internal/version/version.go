@@ -1,5 +1,6 @@
 package version
+
 const (
-	Current = "v1.0.2"
+	Current = "v1.0.3"
 	Repo    = "SentinelXofficial/sxel"
 )

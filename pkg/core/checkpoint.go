@@ -2,9 +2,10 @@ package core
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"sync"
+
+	"github.com/SentinelXofficial/sxel/internal/output"
 )
 
 const DefaultCheckpointFile = ".sxsc_checkpoint"
@@ -47,7 +48,7 @@ func LoadCheckpoint(file string) (*CheckpointState, bool) {
 	if cs.ScannedURLs == nil {
 		cs.ScannedURLs = map[string]bool{}
 	}
-	fmt.Printf("[*] Checkpoint   : Resumed — %d URL(s) already scanned, %d result(s) reloaded from %s\n",
+	output.Info("Checkpoint: Resumed — %d URL(s) already scanned, %d result(s) reloaded from %s",
 		len(cs.ScannedURLs), len(cs.Results), file)
 	return cs, true
 }

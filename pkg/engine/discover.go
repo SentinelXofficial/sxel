@@ -1,9 +1,9 @@
 package engine
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"encoding/xml"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -303,7 +303,7 @@ func ScanSensitiveFiles(client *http.Client, cfg *core.Config, baseURL string) [
 			results = append(results, core.ScanResult{
 				Type: "Sensitive File/Endpoint Exposed", URL: fullURL,
 				Method: "GET", Parameter: "path", Payload: f.path,
-				Severity: f.sev,
+				Severity:  f.sev,
 				Evidence:  fmt.Sprintf("%s (HTTP %d)", f.desc, resp.StatusCode),
 				Timestamp: time.Now(),
 			})

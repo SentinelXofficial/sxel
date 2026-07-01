@@ -1,9 +1,10 @@
 package modules
 
 import (
-	"github.com/SentinelXofficial/sxel/pkg/core"
 	"encoding/json"
 	"fmt"
+	"github.com/SentinelXofficial/sxel/internal/output"
+	"github.com/SentinelXofficial/sxel/pkg/core"
 	"io"
 	"net"
 	"net/http"
@@ -103,7 +104,7 @@ func EnumerateSubdomains(client *http.Client, cfg *core.Config, targetURL string
 			Timestamp: time.Now(),
 		})
 	}
-	fmt.Printf("  \033[36m[*] Subdomain   : %d total subdomain(s) discovered for %s\033[0m\n", len(found), baseDomain)
+	output.Info("[*] Subdomain   : %d total subdomain(s) discovered for %s\n", len(found), baseDomain)
 	return results
 }
 
@@ -119,7 +120,7 @@ func queryCrtSh(domain string, cfg *core.Config) []string {
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		if cfg.Verbose {
-			fmt.Printf("  \033[90m[subdomain] crt.sh unreachable: %v\033[0m\n", err)
+			output.Verbose("[subdomain] crt.sh unreachable: %v", err)
 		}
 		return nil
 	}
