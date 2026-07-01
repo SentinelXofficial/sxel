@@ -1,0 +1,21 @@
+id: kubernetes-manifests-exposed
+brief:
+  title: Kubernetes Manifests & Kubeconfig Exposed
+  by: sxsc
+  level: critical
+  about: Kubernetes kubeconfig and manifest files exposed — cluster compromise.
+  label: [devops, kubernetes, k8s, credentials, critical]
+  score: "9.8 CRITICAL"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/.kube/config"
+      - "{{BaseURL}}/kubeconfig"
+      - "{{BaseURL}}/admin.conf"
+      - "{{BaseURL}}/deployment.yaml"
+      - "{{BaseURL}}/service.yaml"
+      - "{{BaseURL}}/ingress.yaml"
+    signs:
+      - on: word
+        has: ["kubeconfig", "apiVersion:", "kind:", "cluster:", "certificate-authority"]
+        need: any

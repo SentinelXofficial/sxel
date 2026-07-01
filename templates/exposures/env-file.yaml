@@ -1,0 +1,40 @@
+id: env-file-exposed
+brief:
+  title: Environment File (.env) Exposed
+  by: sxsc
+  level: high
+  about: Detects exposed .env files that may contain database credentials, API keys, and secrets.
+  label:
+    - exposure
+    - config
+    - secrets
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/.env"
+    signs:
+      - on: word
+        has:
+          - "DB_"
+          - "APP_KEY"
+          - "SECRET"
+        need: any
+  - verb: GET
+    to:
+      - "{{BaseURL}}/.env.local"
+    signs:
+      - on: word
+        has:
+          - "DB_"
+          - "APP_KEY"
+        need: any
+  - verb: GET
+    to:
+      - "{{BaseURL}}/.env.production"
+    signs:
+      - on: word
+        has:
+          - "APP_ENV"
+          - "DB_"
+        need: any

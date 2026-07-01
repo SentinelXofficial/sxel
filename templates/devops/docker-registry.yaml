@@ -1,0 +1,18 @@
+id: docker-registry-api-exposed
+brief:
+  title: Docker Registry API Exposed
+  by: sxsc
+  level: high
+  about: Docker Registry API accessible — image enumeration and tag discovery.
+  label: [devops, docker, registry, api, exposure]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/v2/_catalog"
+      - "{{BaseURL}}/v2/
+      - "{{BaseURL}}/v2/sxsc/tags/list
+    signs:
+      - on: word
+        has: ["repositories", "Docker-Distribution", "docker"]
+        need: any

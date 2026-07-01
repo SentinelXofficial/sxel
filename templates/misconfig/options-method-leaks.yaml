@@ -1,0 +1,15 @@
+id: options-method-information-leak
+brief:
+  title: OPTIONS Method Information Leak
+  by: sxsc
+  level: info
+  about: Server discloses allowed methods via OPTIONS — useful for attack surface mapping.
+  label: [misconfig, http, information-disclosure]
+moves:
+  - verb: OPTIONS
+    to: ["{{BaseURL}}/"]
+    signs:
+      - on: word
+        has: ["Allow", "Public", "Access-Control-Allow-Methods"]
+        in: header
+        need: any

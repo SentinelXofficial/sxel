@@ -1,0 +1,19 @@
+id: haproxy-stats-exposed
+brief:
+  title: HAProxy Statistics Page Exposed
+  by: sxsc
+  level: medium
+  about: HAProxy stats page accessible — backend topology and traffic stats leaked.
+  label: [network, haproxy, load-balancer, exposure]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/haproxy?stats"
+      - "{{BaseURL}}/stats"
+      - "{{BaseURL}}/haproxy_stats"
+      - "{{BaseURL}}/haproxy-status"
+    signs:
+      - on: word
+        has: ["HAProxy", "Statistics Report", "haproxy"]
+        need: any

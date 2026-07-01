@@ -1,0 +1,20 @@
+id: wordpress-user-enumeration
+brief:
+  title: WordPress User Enumeration
+  by: sxsc
+  level: medium
+  about: WordPress REST API user enumeration — usernames disclosed.
+  label: [cms, wordpress, enumeration, users]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/wp-json/wp/v2/users"
+      - "{{BaseURL}}/wp-json/wp/v2/users/1"
+      - "{{BaseURL}}/?author=1"
+    signs:
+      - on: word
+        has: ["name", "slug", "avatar_urls", "author"]
+        need: any
+      - on: status
+        status: [200]

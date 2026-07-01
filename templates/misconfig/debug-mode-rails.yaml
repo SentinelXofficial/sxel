@@ -1,0 +1,17 @@
+id: rails-debug-mode
+brief:
+  title: Rails Debug Mode Enabled
+  by: sxsc
+  level: medium
+  about: Detects Ruby on Rails applications with debug/development mode active.
+  label: [misconfig, rails, ruby, debug]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/non-existent-sxsc-test"]
+    signs:
+      - on: word
+        has: ["Rails", "Action Controller", "Exception caught", "development"]
+        need: all
+      - on: status
+        status: [500]

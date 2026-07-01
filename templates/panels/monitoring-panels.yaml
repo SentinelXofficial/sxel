@@ -1,0 +1,25 @@
+id: monitoring-panels-discovery
+brief:
+  title: Monitoring & Observability Panels
+  by: sxsc
+  level: info
+  about: Discovers monitoring dashboards — Grafana, Kibana, Prometheus, etc.
+  label: [panel, monitoring, grafana, kibana, prometheus]
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/grafana/"
+      - "{{BaseURL}}/kibana/"
+      - "{{BaseURL}}/app/kibana"
+      - "{{BaseURL}}/prometheus/"
+      - "{{BaseURL}}/graph"
+      - "{{BaseURL}}/splunk/"
+      - "{{BaseURL}}/datadog/"
+      - "{{BaseURL}}/newrelic/"
+      - "{{BaseURL}}:9090/"
+      - "{{BaseURL}}:3000/"
+      - "{{BaseURL}}:5601/"
+    signs:
+      - on: word
+        has: ["Grafana", "Kibana", "Prometheus", "Splunk", "Datadog"]
+        need: any

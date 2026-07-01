@@ -1,0 +1,22 @@
+id: rails-sensitive-paths
+brief:
+  title: Ruby on Rails Sensitive Paths
+  by: sxsc
+  level: high
+  about: Detects exposed Rails configuration and secret files.
+  label: [framework, rails, ruby, configuration, secrets]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/config/database.yml"
+      - "{{BaseURL}}/config/secrets.yml"
+      - "{{BaseURL}}/config/credentials.yml.enc"
+      - "{{BaseURL}}/config/master.key"
+      - "{{BaseURL}}/config/storage.yml"
+      - "{{BaseURL}}/sidekiq/"
+      - "{{BaseURL}}/delayed_job/overview"
+    signs:
+      - on: word
+        has: ["secret_key_base", "database:", "production:", "password"]
+        need: any

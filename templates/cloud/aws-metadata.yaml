@@ -1,0 +1,18 @@
+id: aws-instance-metadata-exposed
+brief:
+  title: AWS Instance Metadata Service (IMDS) Accessible
+  by: sxsc
+  level: critical
+  about: AWS IMDS accessible via SSRF or direct proxy — IAM credentials leak possible.
+  label: [cloud, aws, metadata, credentials, ssrf, critical]
+  score: "9.8 CRITICAL"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/latest/meta-data/"
+      - "{{BaseURL}}/latest/meta-data/iam/security-credentials/
+      - "{{BaseURL}}/latest/user-data/"
+    signs:
+      - on: word
+        has: ["ami-id", "instance-id", "iam", "security-credentials", "user-data"]
+        need: any

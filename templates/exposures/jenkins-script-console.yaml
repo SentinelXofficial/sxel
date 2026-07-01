@@ -1,0 +1,18 @@
+id: jenkins-script-console-exposed
+brief:
+  title: Jenkins Script Console Exposed
+  by: sxsc
+  level: critical
+  about: Jenkins script console accessible without authentication — full RCE.
+  label: [exposure, jenkins, cicd, rce, critical]
+  score: "10.0 CRITICAL"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/script"
+      - "{{BaseURL}}/jenkins/script"
+      - "{{BaseURL}}/manage/script"
+    signs:
+      - on: word
+        has: ["Groovy", "Script Console", "println", "Jenkins"]
+        need: all

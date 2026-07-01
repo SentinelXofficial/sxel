@@ -1,0 +1,21 @@
+id: wordpress-backup-files
+brief:
+  title: WordPress Backup Files Exposed
+  by: sxsc
+  level: high
+  about: WordPress backup and migration files exposed — full site compromise.
+  label: [cms, wordpress, backup, exposure]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/wp-content/backup-db/"
+      - "{{BaseURL}}/wp-content/backups/
+      - "{{BaseURL}}/wp-content/uploads/backupbuddy_backups/
+      - "{{BaseURL}}/wp-content/ai1wm-backups/
+      - "{{BaseURL}}/wp-content/updraft/
+      - "{{BaseURL}}/wp-content/uploads/backup-guard/
+    signs:
+      - on: word
+        has: [".sql", ".zip", ".tar", "Index of"]
+        need: any

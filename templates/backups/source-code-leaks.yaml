@@ -1,0 +1,26 @@
+id: source-code-files-exposed
+brief:
+  title: Source Code Files Exposed
+  by: sxsc
+  level: high
+  about: Source code files directly accessible — application logic leaked.
+  label: [backups, source-code, exposure]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/index.php.bak"
+      - "{{BaseURL}}/index.php~"
+      - "{{BaseURL}}/index.php.old"
+      - "{{BaseURL}}/index.php.save"
+      - "{{BaseURL}}/index.php.swp"
+      - "{{BaseURL}}/config.php.bak"
+      - "{{BaseURL}}/config.php~"
+      - "{{BaseURL}}/wp-config.php.bak"
+      - "{{BaseURL}}/wp-config.php~"
+      - "{{BaseURL}}/app.js.bak"
+      - "{{BaseURL}}/server.js.bak"
+      - "{{BaseURL}}/main.go.bak"
+    signs:
+      - on: status
+        status: [200]

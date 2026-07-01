@@ -1,0 +1,22 @@
+id: database-panels-discovery
+brief:
+  title: Database Management Panels
+  by: sxsc
+  level: info
+  about: Discovers database admin panels — phpMyAdmin, Adminer, pgAdmin, etc.
+  label: [panel, database, admin, mysql, postgresql]
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/phpmyadmin/"
+      - "{{BaseURL}}/adminer/"
+      - "{{BaseURL}}/adminer.php"
+      - "{{BaseURL}}/pgadmin/"
+      - "{{BaseURL}}/pgadmin4/"
+      - "{{BaseURL}}/mongo-express/"
+      - "{{BaseURL}}/rockmongo/"
+      - "{{BaseURL}}/phppgadmin/"
+    signs:
+      - on: word
+        has: ["phpMyAdmin", "Adminer", "pgAdmin", "phpPgAdmin"]
+        need: any

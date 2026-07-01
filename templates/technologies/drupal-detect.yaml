@@ -1,0 +1,16 @@
+id: drupal-detection
+brief:
+  title: Drupal CMS Detection
+  by: sxsc
+  level: info
+  about: Detects Drupal content management system.
+  label: [tech, cms, drupal, php]
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/user/login"
+      - "{{BaseURL}}/node/1"
+    signs:
+      - on: word
+        has: ["Drupal", "drupal", "X-Drupal", "x-generator: Drupal"]
+        need: any

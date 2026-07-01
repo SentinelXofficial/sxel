@@ -1,0 +1,19 @@
+id: cpanel-whm-exposed
+brief:
+  title: cPanel / WHM Login Exposed
+  by: sxsc
+  level: high
+  about: cPanel or WHM login page exposed — hosting control panel accessible.
+  label: [network, cpanel, hosting, admin]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/cpanel"
+      - "{{BaseURL}}:2083/"
+      - "{{BaseURL}}:2087/"
+      - "{{BaseURL}}/whm"
+    signs:
+      - on: word
+        has: ["cPanel", "WHM", "whostmgr"]
+        need: any

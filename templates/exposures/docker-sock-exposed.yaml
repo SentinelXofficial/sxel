@@ -1,0 +1,18 @@
+id: docker-socket-exposed
+brief:
+  title: Docker Socket Exposed via HTTP
+  by: sxsc
+  level: critical
+  about: Docker socket accessible via web proxy — container escape & host compromise.
+  label: [exposure, docker, container, critical, rce]
+  score: "10.0 CRITICAL"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/containers/json"
+      - "{{BaseURL}}/info"
+      - "{{BaseURL}}/version"
+    signs:
+      - on: word
+        has: ["Docker", "containers", "ApiVersion", "docker"]
+        need: all

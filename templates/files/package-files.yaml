@@ -1,0 +1,30 @@
+id: package-manager-files-exposed
+brief:
+  title: Package Manager Files Exposed
+  by: sxsc
+  level: medium
+  about: Package manager lock files exposed — dependency & version information leak.
+  label: [files, npm, composer, pip, dependencies]
+  score: "4.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/package.json"
+      - "{{BaseURL}}/package-lock.json"
+      - "{{BaseURL}}/yarn.lock"
+      - "{{BaseURL}}/composer.json"
+      - "{{BaseURL}}/composer.lock"
+      - "{{BaseURL}}/Gemfile"
+      - "{{BaseURL}}/Gemfile.lock"
+      - "{{BaseURL}}/Pipfile"
+      - "{{BaseURL}}/Pipfile.lock"
+      - "{{BaseURL}}/requirements.txt"
+      - "{{BaseURL}}/go.mod"
+      - "{{BaseURL}}/Cargo.toml"
+      - "{{BaseURL}}/Cargo.lock"
+    signs:
+      - on: word
+        has: ["dependencies", "version", "require", "name", "version"]
+        need: any
+      - on: status
+        status: [200]

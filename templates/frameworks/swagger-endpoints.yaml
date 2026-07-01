@@ -1,0 +1,29 @@
+id: swagger-openapi-endpoints
+brief:
+  title: Swagger / OpenAPI Specification Files
+  by: sxsc
+  level: medium
+  about: Discovers Swagger/OpenAPI specification files for full API enumeration.
+  label: [framework, swagger, openapi, api, documentation]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/swagger.json"
+      - "{{BaseURL}}/swagger.yaml"
+      - "{{BaseURL}}/openapi.json"
+      - "{{BaseURL}}/openapi.yaml"
+      - "{{BaseURL}}/api/swagger.json"
+      - "{{BaseURL}}/api-docs/swagger.json"
+      - "{{BaseURL}}/v1/swagger.json"
+      - "{{BaseURL}}/v2/swagger.json"
+      - "{{BaseURL}}/v3/api-docs"
+      - "{{BaseURL}}/api/v1/swagger.json"
+      - "{{BaseURL}}/api/openapi.json"
+      - "{{BaseURL}}/docs/api/swagger.json"
+    signs:
+      - on: word
+        has: ["swagger", "openapi", "paths", "definitions", "components"]
+        need: all
+      - on: status
+        status: [200]

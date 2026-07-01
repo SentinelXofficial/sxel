@@ -1,0 +1,27 @@
+id: api-documentation-exposed
+brief:
+  title: API Documentation Exposed
+  by: sxsc
+  level: medium
+  about: API documentation endpoints accessible — Swagger, OpenAPI, Redoc, etc.
+  label: [api, documentation, swagger, openapi, information-disclosure]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/swagger-ui.html"
+      - "{{BaseURL}}/swagger-ui/"
+      - "{{BaseURL}}/swagger/index.html"
+      - "{{BaseURL}}/api-docs/"
+      - "{{BaseURL}}/api/docs/"
+      - "{{BaseURL}}/docs/"
+      - "{{BaseURL}}/redoc/"
+      - "{{BaseURL}}/rapidoc/"
+      - "{{BaseURL}}/scalar/"
+      - "{{BaseURL}}/openapi/"
+    signs:
+      - on: word
+        has: ["swagger", "openapi", "api-docs", "redoc", "rapidoc", "scalar"]
+        need: any
+      - on: status
+        status: [200]

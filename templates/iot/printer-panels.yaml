@@ -1,0 +1,18 @@
+id: network-printer-panels
+brief:
+  title: Network Printer Management Panels
+  by: sxsc
+  level: medium
+  about: Discovers network printer admin interfaces.
+  label: [iot, printer, network, admin, panel]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/hp/device/
+      - "{{BaseURL}}/wcd/
+      - "{{BaseURL}}/webJetAdmin/
+    signs:
+      - on: word
+        has: ["HP ", "Printer", "Canon", "Brother", "Xerox", "Supply Levels"]
+        need: any

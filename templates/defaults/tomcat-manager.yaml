@@ -1,0 +1,18 @@
+id: tomcat-manager-exposed
+brief:
+  title: Apache Tomcat Manager / Host Manager Exposed
+  by: sxsc
+  level: high
+  about: Tomcat Manager App accessible — WAR deployment and session management.
+  label: [defaults, tomcat, manager, java, admin]
+  score: "8.8 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/manager/html"
+      - "{{BaseURL}}/host-manager/html"
+      - "{{BaseURL}}/manager/status"
+    signs:
+      - on: word
+        has: ["Apache Tomcat", "Manager", "401", "tomcat"]
+        need: any

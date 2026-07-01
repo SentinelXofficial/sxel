@@ -1,0 +1,32 @@
+id: git-repository-exposed
+brief:
+  title: Git Repository Exposed
+  by: sxsc
+  level: high
+  about: |
+    Detects exposed .git directories that allow downloading the entire
+    Git repository, potentially leaking source code, credentials, and
+    configuration.
+  label:
+    - misconfig
+    - git
+    - exposure
+    - information-disclosure
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/.git/HEAD"
+    signs:
+      - on: word
+        has:
+          - "ref: refs/"
+  - verb: GET
+    to:
+      - "{{BaseURL}}/.git/config"
+    signs:
+      - on: word
+        has:
+          - "[core]"
+          - "repositoryformatversion"
+        need: any

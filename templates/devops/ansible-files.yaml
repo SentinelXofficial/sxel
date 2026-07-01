@@ -1,0 +1,21 @@
+id: ansible-configuration-exposed
+brief:
+  title: Ansible Configuration Files Exposed
+  by: sxsc
+  level: high
+  about: Ansible playbooks and inventory files exposed — infrastructure details leaked.
+  label: [devops, ansible, configuration, exposure]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/ansible.cfg"
+      - "{{BaseURL}}/playbook.yml"
+      - "{{BaseURL}}/playbook.yaml"
+      - "{{BaseURL}}/inventory.ini"
+      - "{{BaseURL}}/hosts.ini"
+      - "{{BaseURL}}/group_vars/all.yml"
+    signs:
+      - on: word
+        has: ["hosts:", "ansible", "playbook", "inventory", "become:"]
+        need: any

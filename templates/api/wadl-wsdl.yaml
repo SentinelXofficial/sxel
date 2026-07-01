@@ -1,0 +1,23 @@
+id: wadl-wsdl-exposed
+brief:
+  title: WADL / WSDL Service Descriptions Exposed
+  by: sxsc
+  level: low
+  about: SOAP WSDL and REST WADL files exposed — service enumeration.
+  label: [api, soap, rest, wsdl, wadl]
+  score: "3.7 LOW"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/application.wadl"
+      - "{{BaseURL}}/api/application.wadl"
+      - "{{BaseURL}}/services?wsdl"
+      - "{{BaseURL}}/Service.svc?wsdl"
+      - "{{BaseURL}}/soap?wsdl"
+      - "{{BaseURL}}/webservice?wsdl"
+    signs:
+      - on: word
+        has: ["xmlns", "wsdl", "soap", "wadl", "xsd", "schema", "binding"]
+        need: any
+      - on: status
+        status: [200]

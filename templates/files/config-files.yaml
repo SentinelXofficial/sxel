@@ -1,0 +1,32 @@
+id: config-files-exposed
+brief:
+  title: Configuration Files Exposed
+  by: sxsc
+  level: high
+  about: Scans for 50+ common configuration files that may leak credentials.
+  label: [files, config, exposure, credentials]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/config.php"
+      - "{{BaseURL}}/config.yml"
+      - "{{BaseURL}}/config.yaml"
+      - "{{BaseURL}}/config.json"
+      - "{{BaseURL}}/settings.py"
+      - "{{BaseURL}}/settings.php"
+      - "{{BaseURL}}/configuration.php"
+      - "{{BaseURL}}/app.config"
+      - "{{BaseURL}}/appsettings.json"
+      - "{{BaseURL}}/secrets.yml"
+      - "{{BaseURL}}/secret.json"
+      - "{{BaseURL}}/credentials.json"
+      - "{{BaseURL}}/parameters.yml"
+      - "{{BaseURL}}/database.yml"
+      - "{{BaseURL}}/application.properties"
+    signs:
+      - on: word
+        has: ["password", "secret", "credential", "connection", "database", "api_key", "token"]
+        need: any
+      - on: status
+        status: [200]

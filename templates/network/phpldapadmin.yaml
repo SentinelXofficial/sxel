@@ -1,0 +1,19 @@
+id: ldap-admin-panels-exposed
+brief:
+  title: LDAP / Directory Admin Panels Exposed
+  by: sxsc
+  level: high
+  about: LDAP administration panels exposed — directory manipulation possible.
+  label: [network, ldap, admin, directory]
+  score: "8.1 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/phpldapadmin/"
+      - "{{BaseURL}}/ldapadmin/"
+      - "{{BaseURL}}/lam/
+      - "{{BaseURL}}/apacheds/
+    signs:
+      - on: word
+        has: ["phpLDAPadmin", "LDAP", "ldap", "Directory"]
+        need: any

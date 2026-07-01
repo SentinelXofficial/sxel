@@ -1,0 +1,30 @@
+id: swagger-api-exposed
+brief:
+  title: Swagger API Documentation Exposed
+  by: sxsc
+  level: medium
+  about: Detects exposed Swagger/OpenAPI documentation that reveals API structure.
+  label:
+    - misconfig
+    - api
+    - swagger
+    - information-disclosure
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/swagger.json"
+      - "{{BaseURL}}/api/swagger.json"
+      - "{{BaseURL}}/swagger/v1/swagger.json"
+      - "{{BaseURL}}/v2/api-docs"
+      - "{{BaseURL}}/v3/api-docs"
+    signs:
+      - on: word
+        has:
+          - '"swagger"'
+          - '"openapi"'
+          - '"paths"'
+        need: any
+      - on: status
+        status:
+          - 200

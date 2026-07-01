@@ -1,0 +1,17 @@
+id: tomcat-detection
+brief:
+  title: Apache Tomcat Detection
+  by: sxsc
+  level: info
+  about: Detects Apache Tomcat servlet container.
+  label: [tech, tomcat, java, apache]
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/docs/"
+      - "{{BaseURL}}/examples/"
+    signs:
+      - on: word
+        has: ["Apache Tomcat", "tomcat", "Jakarta"]
+        need: any

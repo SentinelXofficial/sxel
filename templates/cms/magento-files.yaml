@@ -1,0 +1,21 @@
+id: magento-sensitive-paths
+brief:
+  title: Magento Sensitive Path Discovery
+  by: sxsc
+  level: medium
+  about: Detects exposed Magento configuration and debug paths.
+  label: [cms, magento, ecommerce, configuration]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/app/etc/local.xml"
+      - "{{BaseURL}}/app/etc/env.php"
+      - "{{BaseURL}}/downloader/
+      - "{{BaseURL}}/var/log/
+      - "{{BaseURL}}/var/report/
+      - "{{BaseURL}}/pub/errors/
+    signs:
+      - on: word
+        has: ["Magento", "configuration", "error", "report"]
+        need: any

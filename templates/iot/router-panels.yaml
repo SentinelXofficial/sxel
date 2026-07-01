@@ -1,0 +1,18 @@
+id: router-panels-discovery
+brief:
+  title: Router / Network Device Panels
+  by: sxsc
+  level: info
+  about: Discovers router and network device management interfaces.
+  label: [iot, router, network, admin, panel]
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/cgi-bin/luci/
+      - "{{BaseURL}}/login.htm"
+      - "{{BaseURL}}/admin/login.asp"
+    signs:
+      - on: word
+        has: ["router", "RouterOS", "OpenWrt", "DD-WRT", "MikroTik"]
+        need: any

@@ -1,0 +1,18 @@
+id: oauth-open-redirect
+brief:
+  title: OAuth Open Redirect Detection
+  by: sxsc
+  level: high
+  about: Detects OAuth endpoints vulnerable to redirect_uri manipulation.
+  label: [auth, oauth, open-redirect, phishing]
+  score: "8.1 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/oauth/authorize?client_id=sxsc&redirect_uri=https://evil.com&response_type=code"
+      - "{{BaseURL}}/authorize?redirect_uri=https://evil.com&client_id=sxsc&response_type=token"
+      - "{{BaseURL}}/oauth2/authorize?redirect_uri=https://evil.com&client_id=sxsc&response_type=code"
+    signs:
+      - on: word
+        has: ["redirect", "evil.com", "authorize", "invalid_request"]
+        need: any

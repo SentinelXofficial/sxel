@@ -1,0 +1,18 @@
+id: cors-full-audit
+brief:
+  title: CORS Misconfiguration Audit
+  by: sxsc
+  level: medium
+  about: Tests for common CORS misconfigurations.
+  label: [api, cors, misconfig]
+  score: "6.1 MEDIUM"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    head:
+      Origin: "https://evil.com"
+    signs:
+      - on: word
+        has: ["access-control-allow-origin: https://evil.com", "access-control-allow-origin: *"]
+        in: header
+        need: any

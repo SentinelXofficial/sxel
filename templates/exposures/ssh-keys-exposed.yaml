@@ -1,0 +1,22 @@
+id: ssh-private-keys-exposed
+brief:
+  title: SSH Private Keys Exposed
+  by: sxsc
+  level: critical
+  about: SSH private key files accessible via web — complete server compromise.
+  label: [exposure, ssh, credentials, critical]
+  score: "9.8 CRITICAL"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/.ssh/id_rsa"
+      - "{{BaseURL}}/.ssh/id_ed25519"
+      - "{{BaseURL}}/.ssh/id_ecdsa"
+      - "{{BaseURL}}/id_rsa"
+      - "{{BaseURL}}/ssh/id_rsa"
+    signs:
+      - on: word
+        has: ["BEGIN OPENSSH PRIVATE KEY", "BEGIN RSA PRIVATE KEY", "BEGIN EC PRIVATE KEY"]
+        need: any
+      - on: status
+        status: [200]

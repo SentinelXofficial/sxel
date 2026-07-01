@@ -1,0 +1,15 @@
+id: basic-auth-over-http
+brief:
+  title: Basic Authentication over HTTP
+  by: sxsc
+  level: high
+  about: Basic auth credentials transmitted over unencrypted HTTP.
+  label: [auth, basic-auth, http, cleartext]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    signs:
+      - on: word
+        has: ["www-authenticate: basic"]
+        in: header

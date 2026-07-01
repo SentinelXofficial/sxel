@@ -1,0 +1,15 @@
+id: nodejs-detection
+brief:
+  title: Node.js / Express Detection
+  by: sxsc
+  level: info
+  about: Detects Node.js or Express.js web application.
+  label: [tech, nodejs, javascript, express]
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    signs:
+      - on: word
+        has: ["x-powered-by: express", "node.js", "nodejs"]
+        in: header
+        need: any

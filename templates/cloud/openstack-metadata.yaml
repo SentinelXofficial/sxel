@@ -1,0 +1,15 @@
+id: openstack-metadata-exposed
+brief:
+  title: OpenStack Metadata Exposed
+  by: sxsc
+  level: high
+  about: OpenStack metadata service accessible.
+  label: [cloud, openstack, metadata, credentials]
+  score: "8.8 HIGH"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/openstack/latest/meta_data.json"]
+    signs:
+      - on: word
+        has: ["uuid", "meta", "public_keys", "hostname"]
+        need: any

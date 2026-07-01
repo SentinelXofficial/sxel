@@ -1,0 +1,23 @@
+id: graphql-introspection-detection
+brief:
+  title: GraphQL Introspection Enabled
+  by: sxsc
+  level: medium
+  about: GraphQL introspection enabled — full schema enumerable by attackers.
+  label: [api, graphql, introspection, information-disclosure]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: POST
+    to:
+      - "{{BaseURL}}/graphql"
+      - "{{BaseURL}}/api/graphql"
+      - "{{BaseURL}}/v1/graphql"
+      - "{{BaseURL}}/gql"
+      - "{{BaseURL}}/query"
+    head:
+      Content-Type: application/json
+    send: '{"query":"{ __schema { types { name kind description } } }"}'
+    signs:
+      - on: word
+        has: ["__schema", "types", "queryType", "mutationType"]
+        need: all

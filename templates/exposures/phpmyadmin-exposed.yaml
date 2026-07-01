@@ -1,0 +1,22 @@
+id: phpmyadmin-instance-exposed
+brief:
+  title: phpMyAdmin Instance Exposed
+  by: sxsc
+  level: high
+  about: phpMyAdmin accessible — enables database compromise via brute-force or default creds.
+  label: [exposure, phpmyadmin, mysql, database, panel]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/phpmyadmin/"
+      - "{{BaseURL}}/phpMyAdmin/"
+      - "{{BaseURL}}/myadmin/"
+      - "{{BaseURL}}/pma/"
+      - "{{BaseURL}}/admin/phpmyadmin/"
+    signs:
+      - on: word
+        has: ["phpMyAdmin", "pma_username", "pma_password", "server=1"]
+        need: any
+      - on: status
+        status: [200]

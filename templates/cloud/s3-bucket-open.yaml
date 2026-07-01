@@ -1,0 +1,17 @@
+id: aws-s3-bucket-open
+brief:
+  title: AWS S3 Bucket Publicly Accessible
+  by: sxsc
+  level: high
+  about: S3 bucket with public ListBucket access — data exposure.
+  label: [cloud, aws, s3, storage, exposure]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    signs:
+      - on: word
+        has: ["ListBucketResult", "Contents", "s3", "Key", "LastModified"]
+        need: all
+      - on: status
+        status: [200]

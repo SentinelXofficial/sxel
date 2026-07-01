@@ -1,0 +1,23 @@
+id: wordpress-common-plugins
+brief:
+  title: WordPress Common Plugin Paths
+  by: sxsc
+  level: info
+  about: Probes common WordPress plugin paths for installed plugin discovery.
+  label: [cms, wordpress, plugins, enumeration]
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/wp-content/plugins/contact-form-7/"
+      - "{{BaseURL}}/wp-content/plugins/woocommerce/"
+      - "{{BaseURL}}/wp-content/plugins/wordpress-seo/"
+      - "{{BaseURL}}/wp-content/plugins/elementor/"
+      - "{{BaseURL}}/wp-content/plugins/jetpack/"
+      - "{{BaseURL}}/wp-content/plugins/akismet/"
+      - "{{BaseURL}}/wp-content/plugins/all-in-one-wp-migration/"
+      - "{{BaseURL}}/wp-content/plugins/wordfence/"
+      - "{{BaseURL}}/wp-content/plugins/duplicator/"
+      - "{{BaseURL}}/wp-content/plugins/updraftplus/"
+    signs:
+      - on: status
+        status: [200, 301, 302, 403]

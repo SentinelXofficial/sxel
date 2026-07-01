@@ -1,0 +1,29 @@
+id: log-files-exposed
+brief:
+  title: Log Files Exposed
+  by: sxsc
+  level: high
+  about: Application and server log files exposed — credential leakage and debug info.
+  label: [files, log, exposure, debug]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/debug.log"
+      - "{{BaseURL}}/error.log"
+      - "{{BaseURL}}/app.log"
+      - "{{BaseURL}}/access.log"
+      - "{{BaseURL}}/application.log"
+      - "{{BaseURL}}/server.log"
+      - "{{BaseURL}}/laravel.log"
+      - "{{BaseURL}}/storage/logs/laravel.log"
+      - "{{BaseURL}}/wp-content/debug.log"
+      - "{{BaseURL}}/var/log/syslog"
+      - "{{BaseURL}}/npm-debug.log"
+      - "{{BaseURL}}/yarn-error.log"
+    signs:
+      - on: word
+        has: ["ERROR", "WARN", "DEBUG", "exception", "stack trace", "Exception"]
+        need: any
+      - on: status
+        status: [200]

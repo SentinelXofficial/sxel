@@ -1,0 +1,22 @@
+id: editor-backup-files-exposed
+brief:
+  title: Editor Backup / Temp Files Exposed
+  by: sxsc
+  level: medium
+  about: Editor temporary and backup files exposed — source code may be leaked.
+  label: [backups, editor, files, source-code]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/index.html~
+      - "{{BaseURL}}/.#index.php"
+      - "{{BaseURL}}/index.php.swn"
+      - "{{BaseURL}}/index.php.swo"
+      - "{{BaseURL}}/index.php.swn"
+      - "{{BaseURL}}/.index.php.swp"
+      - "{{BaseURL}}/.index.html.swp"
+      - "{{BaseURL}}/index.js.bak"
+    signs:
+      - on: status
+        status: [200]

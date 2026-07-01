@@ -1,0 +1,15 @@
+id: aws-elb-alb-detection
+brief:
+  title: AWS ELB / ALB Detection
+  by: sxsc
+  level: info
+  about: Detects AWS Elastic Load Balancer or Application Load Balancer.
+  label: [tech, aws, cloud, load-balancer]
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    signs:
+      - on: word
+        has: ["awselb", "AWSALB", "X-Amzn", "ELB-HealthChecker"]
+        in: header
+        need: any

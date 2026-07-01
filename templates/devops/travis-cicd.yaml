@@ -1,0 +1,23 @@
+id: cicd-configuration-exposed
+brief:
+  title: CI/CD Pipeline Configuration Exposed
+  by: sxsc
+  level: high
+  about: CI/CD config files exposed — deployment secrets and pipeline structure leaked.
+  label: [devops, cicd, pipeline, secrets]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/.travis.yml"
+      - "{{BaseURL}}/.circleci/config.yml"
+      - "{{BaseURL}}/.github/workflows/deploy.yml"
+      - "{{BaseURL}}/Jenkinsfile"
+      - "{{BaseURL}}/.gitlab-ci.yml"
+      - "{{BaseURL}}/azure-pipelines.yml"
+      - "{{BaseURL}}/bitbucket-pipelines.yml"
+      - "{{BaseURL}}/buildspec.yml"
+    signs:
+      - on: word
+        has: ["pipeline", "deploy", "secret", "stages:", "jobs:", "steps:"]
+        need: any

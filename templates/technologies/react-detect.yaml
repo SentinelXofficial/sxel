@@ -1,0 +1,14 @@
+id: react-detection
+brief:
+  title: React.js Detection
+  by: sxsc
+  level: info
+  about: Detects React.js single-page applications.
+  label: [tech, react, javascript, spa]
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    signs:
+      - on: word
+        has: ["react", "React", "react-dom", "__REACT_DEVTOOLS_GLOBAL_HOOK__", "react-root"]
+        need: any

@@ -1,0 +1,15 @@
+id: digitalocean-metadata-exposed
+brief:
+  title: DigitalOcean Metadata Exposed
+  by: sxsc
+  level: high
+  about: DigitalOcean metadata endpoint accessible.
+  label: [cloud, digitalocean, metadata, credentials]
+  score: "8.8 HIGH"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/metadata/v1/"]
+    signs:
+      - on: word
+        has: ["droplet_id", "hostname", "user_data", "auth_key"]
+        need: any

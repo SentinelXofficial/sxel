@@ -1,0 +1,15 @@
+id: nginx-detection
+brief:
+  title: Nginx Web Server Detection
+  by: sxsc
+  level: info
+  about: Detects Nginx web server.
+  label: [tech, nginx, web-server]
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    signs:
+      - on: word
+        has: ["nginx", "server: nginx"]
+        in: header
+        need: any

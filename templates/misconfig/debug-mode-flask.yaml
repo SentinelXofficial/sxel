@@ -1,0 +1,15 @@
+id: flask-debug-mode
+brief:
+  title: Flask Debug Mode (Werkzeug)
+  by: sxsc
+  level: high
+  about: Detects Flask apps running with Werkzeug debugger enabled.
+  label: [misconfig, flask, python, debug, rce-potential]
+  score: "8.1 HIGH"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/console"]
+    signs:
+      - on: word
+        has: ["Werkzeug", "Debugger", "PIN:", "Console"]
+        need: all

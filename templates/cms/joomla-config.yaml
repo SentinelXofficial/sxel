@@ -1,0 +1,19 @@
+id: joomla-configuration-files
+brief:
+  title: Joomla Configuration Files Exposed
+  by: sxsc
+  level: high
+  about: Joomla configuration.php exposed — database credentials leak.
+  label: [cms, joomla, configuration, credentials, exposure]
+  score: "8.1 HIGH"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/configuration.php"
+      - "{{BaseURL}}/administrator/backups/
+      - "{{BaseURL}}/tmp/
+      - "{{BaseURL}}/installation/
+    signs:
+      - on: word
+        has: ["JConfig", "password", "database", "user"]
+        need: any

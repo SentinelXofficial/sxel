@@ -1,0 +1,15 @@
+id: apache-detection
+brief:
+  title: Apache HTTPD Detection
+  by: sxsc
+  level: info
+  about: Detects Apache HTTPD web server.
+  label: [tech, apache, web-server]
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/"]
+    signs:
+      - on: word
+        has: ["Apache", "server: Apache"]
+        in: header
+        need: any

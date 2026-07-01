@@ -1,0 +1,17 @@
+id: django-debug-mode
+brief:
+  title: Django Debug Mode Enabled
+  by: sxsc
+  level: high
+  about: Detects Django applications with DEBUG=True in production.
+  label: [misconfig, django, python, debug, information-disclosure]
+  score: "7.5 HIGH"
+moves:
+  - verb: GET
+    to: ["{{BaseURL}}/non-existent-route-sxsc/"]
+    signs:
+      - on: word
+        has: ["Page not found", "You're seeing this error because you have", "DJANGO_SETTINGS_MODULE"]
+        need: all
+      - on: status
+        status: [404]

@@ -1,0 +1,20 @@
+id: django-sensitive-paths
+brief:
+  title: Django Sensitive Paths
+  by: sxsc
+  level: medium
+  about: Detects exposed Django configuration and admin paths.
+  label: [framework, django, python, configuration]
+  score: "5.3 MEDIUM"
+moves:
+  - verb: GET
+    to:
+      - "{{BaseURL}}/admin/"
+      - "{{BaseURL}}/admin/login/
+      - "{{BaseURL}}/static/admin/
+      - "{{BaseURL}}/api-auth/login/
+      - "{{BaseURL}}/swagger/
+    signs:
+      - on: word
+        has: ["Django", "administration", "csrfmiddlewaretoken", "Log in"]
+        need: any
