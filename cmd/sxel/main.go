@@ -105,7 +105,7 @@ func main() {
 	// Template engine
 	templatesFlag := flag.Bool("templates", false, "Run YAML-based template scans")
 	templateDir := flag.String("template-dir", "./templates/", "Path to templates directory")
-	templateSeverity := flag.String("template-severity", "medium", "Min template severity to run (critical, high, medium, low, info)")
+	templateSeverity := flag.String("template-severity", "high", "Min template severity to run (critical, high, medium, low, info)")
 
 	// Sprint B flags
 	clutchFlag := flag.Bool("clutch", false, "Detect race condition / TOCTOU vulnerabilities")
@@ -916,6 +916,12 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 		if cfg.JSEndpoints {
 			eps := engine.ExtractJSEndpoints(client, cfg, target)
 			for _, ep := range eps {
+				// Scope-filter JS endpoints (prevent external URLs like fonts.googleapis.com)
+				if tURL, err := url.Parse(target); err == nil {
+					if epURL, err := url.Parse(ep); err == nil && epURL.Host != tURL.Host {
+						continue
+					}
+				}
 				p := core.CrawlResult{URL: ep}
 				targetsMu.Lock()
 				targets = append(targets, p)

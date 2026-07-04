@@ -208,21 +208,20 @@ func matchSigns(signs []TemplateSign, body string, resp *http.Response) bool {
 	if len(signs) == 0 {
 		return false
 	}
-	// ALL sign groups must match (AND logic, matching nuclei's matchers-condition: and).
-	// This prevents templates from matching on status code alone when they also
-	// require specific body/header content.
+	// OR logic between sign groups — matches nuclei's default matchers-condition: or.
+	// Within each sign group, words/has use the group's own need: all/any setting.
 	for _, sign := range signs {
 		if sign.On == "status" {
-			if !matchStatus(sign, resp) {
-				return false
+			if matchStatus(sign, resp) {
+				return true
 			}
 		} else {
-			if !matchWords(sign, body, resp) {
-				return false
+			if matchWords(sign, body, resp) {
+				return true
 			}
 		}
 	}
-	return true
+	return false
 }
 
 func matchStatus(sign TemplateSign, resp *http.Response) bool {
@@ -308,7 +307,7 @@ func matchMinSeverity(level, min string) bool {
 	minR := severityRank[strings.ToLower(min)]
 	lvlR := severityRank[strings.ToLower(level)]
 	if minR == 0 {
-		minR = 3 // default: medium
+		minR = 4 // default: high
 	}
 	if lvlR == 0 {
 		lvlR = 3 // unknown = medium

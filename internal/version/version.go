@@ -1,7 +1,7 @@
 package version
 
 const (
-	Current       = "v1.0.9"
+	Current       = "v1.1.0"
 	Repo          = "SentinelXofficial/sxel"
 	TemplatesRepo = "SentinelXofficial/sxel-templates"
 )
