@@ -92,7 +92,7 @@ func (c *Crawler) Crawl(startURL string, maxDepth int) []core.CrawlResult {
 			c.OnPage(cr, len(results))
 		}
 
-		if item.depth < maxDepth {
+		if maxDepth <= 0 || item.depth < maxDepth {
 			for _, lnk := range links {
 				c.mu.Lock()
 				seen := c.visited[lnk]

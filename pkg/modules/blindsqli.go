@@ -43,32 +43,45 @@ func ScanBlindSQLiTime(client *http.Client, cfg *core.Config, target core.CrawlR
 		params = url.Values{}
 	}
 	for param := range params {
-		var baseTime time.Duration
+		// Statistical baseline: 3 samples to measure normal response time
+		var baselineSamples []time.Duration
+		for i := 0; i < 3; i++ {
+			t0 := time.Now()
+			core.DoGET(client, cfg, target.URL) //nolint:errcheck
+			baselineSamples = append(baselineSamples, time.Since(t0))
+		}
+		baseAvg := avgDuration(baselineSamples)
 
 	BlindTimeLoop:
 		for _, tp := range payloads {
-			// Refresh baseline before each payload to avoid stale-timing false negatives
-			t0 := time.Now()
-			core.DoGET(client, cfg, target.URL) //nolint:errcheck
-			baseTime = time.Since(t0)
-
 			testURL, _ := core.SetParam(target.URL, param, tp.payload)
-			t1 := time.Now()
-			_, status, err := core.DoGET(client, cfg, testURL)
-			elapsed := time.Since(t1)
-			if err != nil {
+
+			// Injected sample: 2 requests with payload for averaging
+			var injSamples []time.Duration
+			for i := 0; i < 2; i++ {
+				t1 := time.Now()
+				_, _, err := core.DoGET(client, cfg, testURL)
+				injSamples = append(injSamples, time.Since(t1))
+				if err != nil {
+					continue
+				}
+			}
+			if len(injSamples) == 0 {
 				continue
 			}
-			threshold := baseTime + time.Duration(tp.sleep-1)*time.Second
-			if elapsed >= threshold {
+			injAvg := avgDuration(injSamples)
+
+			// Match if injected time >= baseline + expected sleep
+			threshold := baseAvg + time.Duration(tp.sleep)*time.Second
+			if injAvg >= threshold {
 				results = append(results, core.ScanResult{
 					Type: fmt.Sprintf("SQL Injection Time-Based Blind [%s]", tp.db),
 					URL:  testURL, Method: "GET", Parameter: param,
 					Payload: tp.payload, Severity: "HIGH",
-					Evidence:  fmt.Sprintf("delay %v (baseline %v) HTTP=%d", elapsed.Round(time.Millisecond), baseTime.Round(time.Millisecond), status),
+					Evidence:  fmt.Sprintf("injected avg %v vs baseline avg %v (threshold %v)", injAvg.Round(time.Millisecond), baseAvg.Round(time.Millisecond), threshold.Round(time.Millisecond)),
 					Timestamp: time.Now(),
 				})
-				fmt.Printf("  [BLIND-SQLI] param=%s delay=%v\n", param, elapsed.Round(time.Millisecond))
+				fmt.Printf("  [BLIND-SQLI] param=%s delay=%v\n", param, injAvg.Round(time.Millisecond))
 				break BlindTimeLoop
 			}
 		}
@@ -249,4 +262,16 @@ func ScanBooleanBlindSQLi(client *http.Client, cfg *core.Config, target core.Cra
 	}
 
 	return results
+}
+
+// avgDuration returns the arithmetic mean of a slice of durations.
+func avgDuration(samples []time.Duration) time.Duration {
+	if len(samples) == 0 {
+		return 0
+	}
+	var sum time.Duration
+	for _, s := range samples {
+		sum += s
+	}
+	return sum / time.Duration(len(samples))
 }

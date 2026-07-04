@@ -30,7 +30,7 @@ func main() {
 	listConcurrency := flag.Int("list-concurrency", 3, "Targets to scan concurrently when using --list")
 	crawl := flag.Bool("crawl", false, "Deep recursive crawl")
 	basicCrawl := flag.Bool("basic-crawl", false, "Shallow crawl (depth=1)")
-	depth := flag.Int("depth", 3, "Max crawl depth")
+	depth := flag.Int("depth", 0, "Max crawl depth (0=unlimited)")
 	threads := flag.Int("threads", 5, "Concurrent scan threads")
 	timeout := flag.Int("timeout", 15, "HTTP timeout (seconds)")
 	wafBypass := flag.Bool("waf-bypass", false, "Enable WAF bypass payload variants")
@@ -208,6 +208,11 @@ Examples:
 	if err != nil {
 		output.Error("%v", err)
 		os.Exit(1)
+	}
+
+	// --sql-only automatically enables all SQLi detection types
+	if *sqlOnly {
+		*blind = true
 	}
 
 	if *allFlag {
@@ -428,10 +433,14 @@ Examples:
 	}
 	if cfg.Crawl || cfg.BasicCrawl {
 		mode := "deep"
+		depthStr := "unlimited"
 		if cfg.BasicCrawl {
 			mode = "basic"
+			depthStr = "1"
+		} else if cfg.Depth > 0 {
+			depthStr = fmt.Sprintf("%d", cfg.Depth)
 		}
-		output.Info("Crawl Mode: %s (max depth %d)", mode, cfg.Depth)
+		output.Info("Crawl Mode: %s (max depth %s)", mode, depthStr)
 	}
 	if cfg.WS {
 		output.Info("WebSocket: scan enabled")
