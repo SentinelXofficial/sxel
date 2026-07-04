@@ -113,6 +113,11 @@ func RunTemplates(client *http.Client, cfg *core.Config, targetURL string, templ
 	baseURL := fmt.Sprintf("%s://%s", base.Scheme, base.Host)
 	hostname := base.Host
 
+	// Pre-flight: request a bogus path to detect SPA catch-all routing.
+	// If the SPA returns the same response for every path, file-exposure
+	// templates will false-positive on every request.
+	spaBaseline, isSPA := detectSPABaseline(client, cfg, baseURL)
+
 	for _, tmpl := range templates {
 		// Skip templates below configured severity threshold
 		if !matchMinSeverity(tmpl.Brief.Level, cfg.TemplateSeverity) {
@@ -164,6 +169,10 @@ func RunTemplates(client *http.Client, cfg *core.Config, targetURL string, templ
 
 				// Match signs
 				if matchSigns(move.Signs, bodyStr, resp) {
+					// SPA guard: skip if response is identical to catch-all baseline
+					if isSPA && isSPAFalsePositive(bodyStr, spaBaseline) {
+						continue
+					}
 					sev := mapLevel(tmpl.Brief.Level)
 					results = append(results, core.ScanResult{
 						Type:      fmt.Sprintf("Template: %s", tmpl.Brief.Title),
@@ -303,6 +312,39 @@ func matchMinSeverity(level, min string) bool {
 		lvlR = 3 // unknown = medium
 	}
 	return lvlR >= minR
+}
+
+// spaBaseline holds the response from requesting a bogus path, used to
+// detect SPA catch-all routing that would cause false positives.
+type spaBaseline struct {
+	body   string
+	length int
+	status int
+}
+
+// detectSPABaseline requests a random path and returns the response.  If the
+// status is 2xx (not 404) this likely indicates an SPA with catch-all routing.
+func detectSPABaseline(client *http.Client, cfg *core.Config, baseURL string) (spaBaseline, bool) {
+	bogusURL := baseURL + "/sxsc_nonexistent_" + fmt.Sprintf("%d", time.Now().UnixNano()/1000)
+	body, status, err := core.DoGET(client, cfg, bogusURL)
+	if err != nil || status == 404 || status == 0 {
+		return spaBaseline{}, false
+	}
+	return spaBaseline{body: body, length: len(body), status: status}, status >= 200 && status < 400
+}
+
+// isSPAFalsePositive returns true if the response looks like an SPA catch-all
+// (similar length + status to the bogus-path baseline), not a real hit.
+func isSPAFalsePositive(body string, bl spaBaseline) bool {
+	if bl.length == 0 {
+		return false
+	}
+	// Same status code + similar body length (±15%) → SPA catch-all
+	diff := len(body) - bl.length
+	if diff < 0 {
+		diff = -diff
+	}
+	return float64(diff)/float64(bl.length) < 0.15
 }
 
 func mapLevel(level string) string {
