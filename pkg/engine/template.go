@@ -208,19 +208,21 @@ func matchSigns(signs []TemplateSign, body string, resp *http.Response) bool {
 	if len(signs) == 0 {
 		return false
 	}
+	// ALL sign groups must match (AND logic, matching nuclei's matchers-condition: and).
+	// This prevents templates from matching on status code alone when they also
+	// require specific body/header content.
 	for _, sign := range signs {
 		if sign.On == "status" {
-			if matchStatus(sign, resp) {
-				return true
+			if !matchStatus(sign, resp) {
+				return false
 			}
 		} else {
-			// Default: word matching
-			if matchWords(sign, body, resp) {
-				return true
+			if !matchWords(sign, body, resp) {
+				return false
 			}
 		}
 	}
-	return false
+	return true
 }
 
 func matchStatus(sign TemplateSign, resp *http.Response) bool {
