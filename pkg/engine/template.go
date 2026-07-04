@@ -209,15 +209,18 @@ func matchSigns(signs []TemplateSign, body string, resp *http.Response) bool {
 		return false
 	}
 	// OR logic between sign groups — matches nuclei's default matchers-condition: or.
-	// Within each sign group, words/has use the group's own need: all/any setting.
+	// However, status-only sign groups are treated as filters (confirmers), not
+	// as independent match triggers. A template should never match solely on
+	// HTTP status code — there must be at least one word/content sign match.
+	statusOK := true
 	for _, sign := range signs {
 		if sign.On == "status" {
-			if matchStatus(sign, resp) {
-				return true
+			if !matchStatus(sign, resp) {
+				statusOK = false
 			}
 		} else {
 			if matchWords(sign, body, resp) {
-				return true
+				return statusOK
 			}
 		}
 	}
