@@ -843,7 +843,11 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 				local = append(local, modules.ScanGrpc(client, cfg, t)...)
 			}
 			if cfg.Templates && len(templates) > 0 {
-				local = append(local, engine.RunTemplates(client, cfg, t.URL, templates)...)
+				// Non-Strobe path: no fingerprint available, only run
+				// generic templates (skip vendor-specific ones) to avoid
+				// false positives from unrelated CMS/tech templates.
+				filtered := engine.FilterTemplatesByTech(templates, nil)
+				local = append(local, engine.RunTemplates(client, cfg, t.URL, filtered)...)
 			}
 			cfg.Checkpoint.MarkScanned(t.URL, local)
 			if len(local) > 0 {
@@ -1182,9 +1186,15 @@ func runSnipe(client *http.Client, cfg *core.Config, targetURL string, templates
 		wg.Wait()
 	}
 
-	// Templates
+	// Templates — Snipe mode: fingerprint body, filter by detected tech
 	if len(templates) > 0 {
-		allResults = append(allResults, engine.RunTemplates(client, cfg, targetURL, templates)...)
+		body, _, _ := core.DoGET(client, cfg, targetURL)
+		fp := engine.FingerprintTarget(body, nil, targetURL)
+		filtered := engine.FilterTemplatesByTech(templates, fp.Tech)
+		if len(filtered) > 0 {
+			output.Info("Snipe: running %d/%d template(s) for detected tech %v", len(filtered), len(templates), fp.Tech)
+			allResults = append(allResults, engine.RunTemplates(client, cfg, targetURL, filtered)...)
+		}
 	}
 
 	return allResults

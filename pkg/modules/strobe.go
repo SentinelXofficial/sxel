@@ -106,9 +106,13 @@ func ScanStrobe(client *http.Client, cfg *core.Config, target core.CrawlResult, 
 	}
 	wg.Wait()
 
-	// Phase 3: Template engine
+	// Phase 3: Template engine — only templates relevant to detected tech
 	if len(templates) > 0 {
-		allResults = append(allResults, engine.RunTemplates(client, cfg, target.URL, templates)...)
+		filtered := engine.FilterTemplatesByTech(templates, fp.Tech)
+		if len(filtered) > 0 {
+			output.Info("Strobe: running %d/%d template(s) for detected tech %v", len(filtered), len(templates), fp.Tech)
+			allResults = append(allResults, engine.RunTemplates(client, cfg, target.URL, filtered)...)
+		}
 	}
 
 	// Phase 4: If nothing found, try attack chains

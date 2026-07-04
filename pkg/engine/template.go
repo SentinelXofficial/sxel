@@ -291,6 +291,149 @@ func mapLevel(level string) string {
 	}
 }
 
+// vendorLabels maps template label tags to the technology that must be
+// detected for the template to run. Labels NOT in this map are considered
+// generic (always run).
+var vendorLabels = map[string]string{
+	"wordpress":      "WordPress",
+	"joomla":         "Joomla",
+	"drupal":         "Drupal",
+	"magento":        "Magento",
+	"laravel":        "Laravel",
+	"django":         "Django",
+	"ruby-on-rails":  "Ruby on Rails",
+	"rails":          "Ruby on Rails",
+	"spring":         "Spring Boot",
+	"spring-boot":    "Spring Boot",
+	"struts":         "Apache Struts",
+	"tomcat":         "Tomcat",
+	"apache":         "Apache",
+	"nginx":          "Nginx",
+	"iis":            "IIS",
+	"node.js":        "Node.js",
+	"express":        "Express.js",
+	"next.js":        "Next.js",
+	"react":          "React",
+	"angular":        "Angular",
+	"vue":            "Vue.js",
+	"flask":          "Flask",
+	"fastapi":        "FastAPI",
+	"grafana":        "Grafana",
+	"jenkins":        "Jenkins",
+	"gitlab":         "GitLab",
+	"github":         "GitHub",
+	"weblogic":       "Oracle WebLogic",
+	"websphere":      "IBM WebSphere",
+	"jboss":          "JBoss",
+	"wildfly":        "WildFly",
+	"phpmyadmin":     "phpMyAdmin",
+	"cpanel":         "cPanel",
+	"plesk":          "Plesk",
+	"solr":           "Apache Solr",
+	"elastic":        "Elasticsearch",
+	"kibana":         "Kibana",
+	"logstash":       "Logstash",
+	"splunk":         "Splunk",
+	"prometheus":     "Prometheus",
+	"kubernetes":     "Kubernetes",
+	"docker":         "Docker",
+	"ansible":        "Ansible",
+	"terraform":      "Terraform",
+	"confluence":     "Atlassian Confluence",
+	"jira":           "Atlassian Jira",
+	"bitbucket":      "Atlassian Bitbucket",
+	"vsphere":        "VMware vSphere",
+	"vmware":         "VMware",
+	"citrix":         "Citrix",
+	"cisco":          "Cisco",
+	"fortinet":       "Fortinet",
+	"fortigate":      "Fortinet",
+	"paloalto":       "Palo Alto",
+	"f5":             "F5",
+	"bigip":          "F5 BIG-IP",
+	"haproxy":        "HAProxy",
+	"varnish":        "Varnish",
+	"squid":          "Squid",
+	"kong":           "Kong",
+	"zabbix":         "Zabbix",
+	"nagios":         "Nagios",
+	"oracle":         "Oracle",
+	"sap":            "SAP",
+	"salesforce":     "Salesforce",
+	"sharepoint":     "SharePoint",
+	"moodle":         "Moodle",
+	"prestashop":     "PrestaShop",
+	"shopify":        "Shopify",
+	"typo3":          "TYPO3",
+	"umbraco":        "Umbraco",
+	"sitecore":       "Sitecore",
+	"squirrelmail":   "SquirrelMail",
+	"roundcube":      "Roundcube",
+	"zimbra":         "Zimbra",
+	"exchange":       "Microsoft Exchange",
+	"coldfusion":     "Adobe ColdFusion",
+	"php":            "PHP",
+	"java":           "Java",
+	"asp.net":        "ASP.NET",
+	"dotnet":         ".NET",
+	"python":         "Python",
+	"go":             "Go",
+	"ruby":           "Ruby",
+}
+
+// FilterTemplatesByTech returns only templates relevant to the detected
+// technology stack. Templates with no vendor-specific labels always pass.
+func FilterTemplatesByTech(templates []Template, detectedTech []string) []Template {
+	if len(detectedTech) == 0 {
+		// No tech detected — only run templates without vendor-specific labels
+		return filterGeneric(templates)
+	}
+
+	techSet := make(map[string]bool, len(detectedTech))
+	for _, t := range detectedTech {
+		techSet[strings.ToLower(t)] = true
+	}
+
+	var filtered []Template
+	for _, tmpl := range templates {
+		requiredVendor := ""
+		for _, label := range tmpl.Brief.Label {
+			if vendor, ok := vendorLabels[strings.ToLower(label)]; ok {
+				requiredVendor = vendor
+				break
+			}
+		}
+
+		if requiredVendor == "" {
+			// No vendor requirement — generic template, always run
+			filtered = append(filtered, tmpl)
+		} else if techSet[strings.ToLower(requiredVendor)] {
+			// Vendor matches detected tech
+			filtered = append(filtered, tmpl)
+		}
+		// else: vendor-specific template but vendor not detected → skip
+	}
+	return filtered
+}
+
+// filterGeneric returns templates that have no vendor/tech-specific labels.
+func filterGeneric(templates []Template) []Template {
+	var filtered []Template
+	for _, tmpl := range templates {
+		hasVendor := false
+		for _, label := range tmpl.Brief.Label {
+			if _, ok := vendorLabels[strings.ToLower(label)]; ok {
+				hasVendor = true
+				break
+			}
+		}
+		if !hasVendor {
+			filtered = append(filtered, tmpl)
+		}
+	}
+	return filtered
+}
+
 // LoadTemplateVersion reads the .version file inside the template directory.
 // Returns the version string (e.g. "v0.1.0") or an empty string if not found.
 func LoadTemplateVersion(dir string) string {
