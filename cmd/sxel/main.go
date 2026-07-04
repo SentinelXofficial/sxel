@@ -105,6 +105,7 @@ func main() {
 	// Template engine
 	templatesFlag := flag.Bool("templates", false, "Run YAML-based template scans")
 	templateDir := flag.String("template-dir", "./templates/", "Path to templates directory")
+	templateSeverity := flag.String("template-severity", "medium", "Min template severity to run (critical, high, medium, low, info)")
 
 	// Sprint B flags
 	clutchFlag := flag.Bool("clutch", false, "Detect race condition / TOCTOU vulnerabilities")
@@ -380,8 +381,9 @@ Examples:
 		Smuggling:      *smugglingFlag,
 		RateLimitTest:  *rateLimitTestFlag,
 		SubTakeover:    *subTakeoverFlag,
-		Templates:      *templatesFlag,
-		TemplateDir:    *templateDir,
+		Templates:        *templatesFlag,
+		TemplateDir:      *templateDir,
+		TemplateSeverity: *templateSeverity,
 		Clutch:         *clutchFlag,
 		Snipe:          *snipeFlag,
 		Strobe:         *strobeFlag,

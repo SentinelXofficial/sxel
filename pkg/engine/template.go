@@ -114,6 +114,10 @@ func RunTemplates(client *http.Client, cfg *core.Config, targetURL string, templ
 	hostname := base.Host
 
 	for _, tmpl := range templates {
+		// Skip templates below configured severity threshold
+		if !matchMinSeverity(tmpl.Brief.Level, cfg.TemplateSeverity) {
+			continue
+		}
 		for _, move := range tmpl.Moves {
 			for _, rawPath := range move.To {
 				// Expand template variables
@@ -275,6 +279,31 @@ func flattenHeaders(resp *http.Response) string {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+// severityRank maps level strings to numeric ranks (higher = more severe).
+var severityRank = map[string]int{
+	"critical": 5,
+	"high":     4,
+	"medium":   3,
+	"low":      2,
+	"info":     1,
+}
+
+// matchMinSeverity returns true if the template level meets or exceeds min.
+func matchMinSeverity(level, min string) bool {
+	if min == "" || min == "info" {
+		return true
+	}
+	minR := severityRank[strings.ToLower(min)]
+	lvlR := severityRank[strings.ToLower(level)]
+	if minR == 0 {
+		minR = 3 // default: medium
+	}
+	if lvlR == 0 {
+		lvlR = 3 // unknown = medium
+	}
+	return lvlR >= minR
+}
 
 func mapLevel(level string) string {
 	switch strings.ToLower(level) {

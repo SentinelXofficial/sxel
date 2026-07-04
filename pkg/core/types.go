@@ -104,6 +104,9 @@ type Config struct {
 
 	// OOB callback address (populated when OOB server is active)
 	OOBAddress string // used by template runner for {{interactsh-url}} substitution
+
+	// Template filtering
+	TemplateSeverity string // --template-severity: min severity (critical, high, medium, low, info)
 }
 
 type ScanResult struct {
