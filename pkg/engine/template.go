@@ -291,104 +291,67 @@ func mapLevel(level string) string {
 	}
 }
 
-// vendorLabels maps template label tags to the technology that must be
-// detected for the template to run. Labels NOT in this map are considered
-// generic (always run).
-var vendorLabels = map[string]string{
-	"wordpress":      "WordPress",
-	"joomla":         "Joomla",
-	"drupal":         "Drupal",
-	"magento":        "Magento",
-	"laravel":        "Laravel",
-	"django":         "Django",
-	"ruby-on-rails":  "Ruby on Rails",
-	"rails":          "Ruby on Rails",
-	"spring":         "Spring Boot",
-	"spring-boot":    "Spring Boot",
-	"struts":         "Apache Struts",
-	"tomcat":         "Tomcat",
-	"apache":         "Apache",
-	"nginx":          "Nginx",
-	"iis":            "IIS",
-	"node.js":        "Node.js",
-	"express":        "Express.js",
-	"next.js":        "Next.js",
-	"react":          "React",
-	"angular":        "Angular",
-	"vue":            "Vue.js",
-	"flask":          "Flask",
-	"fastapi":        "FastAPI",
-	"grafana":        "Grafana",
-	"jenkins":        "Jenkins",
-	"gitlab":         "GitLab",
-	"github":         "GitHub",
-	"weblogic":       "Oracle WebLogic",
-	"websphere":      "IBM WebSphere",
-	"jboss":          "JBoss",
-	"wildfly":        "WildFly",
-	"phpmyadmin":     "phpMyAdmin",
-	"cpanel":         "cPanel",
-	"plesk":          "Plesk",
-	"solr":           "Apache Solr",
-	"elastic":        "Elasticsearch",
-	"kibana":         "Kibana",
-	"logstash":       "Logstash",
-	"splunk":         "Splunk",
-	"prometheus":     "Prometheus",
-	"kubernetes":     "Kubernetes",
-	"docker":         "Docker",
-	"ansible":        "Ansible",
-	"terraform":      "Terraform",
-	"confluence":     "Atlassian Confluence",
-	"jira":           "Atlassian Jira",
-	"bitbucket":      "Atlassian Bitbucket",
-	"vsphere":        "VMware vSphere",
-	"vmware":         "VMware",
-	"citrix":         "Citrix",
-	"cisco":          "Cisco",
-	"fortinet":       "Fortinet",
-	"fortigate":      "Fortinet",
-	"paloalto":       "Palo Alto",
-	"f5":             "F5",
-	"bigip":          "F5 BIG-IP",
-	"haproxy":        "HAProxy",
-	"varnish":        "Varnish",
-	"squid":          "Squid",
-	"kong":           "Kong",
-	"zabbix":         "Zabbix",
-	"nagios":         "Nagios",
-	"oracle":         "Oracle",
-	"sap":            "SAP",
-	"salesforce":     "Salesforce",
-	"sharepoint":     "SharePoint",
-	"moodle":         "Moodle",
-	"prestashop":     "PrestaShop",
-	"shopify":        "Shopify",
-	"typo3":          "TYPO3",
-	"umbraco":        "Umbraco",
-	"sitecore":       "Sitecore",
-	"squirrelmail":   "SquirrelMail",
-	"roundcube":      "Roundcube",
-	"zimbra":         "Zimbra",
-	"exchange":       "Microsoft Exchange",
-	"coldfusion":     "Adobe ColdFusion",
-	"php":            "PHP",
-	"java":           "Java",
-	"asp.net":        "ASP.NET",
-	"dotnet":         ".NET",
-	"python":         "Python",
-	"go":             "Go",
-	"ruby":           "Ruby",
+// genericLabels are label tags that describe vulnerability classes rather
+// than specific vendors or products. Templates whose labels are ALL in this
+// set (or empty) are considered "generic" and always run. Any label NOT in
+// this set marks the template as vendor/product-specific — it only runs
+// when that vendor/product is detected in the target fingerprint.
+var genericLabels = map[string]bool{
+	"cve": true, "cve2020": true, "cve2021": true, "cve2022": true,
+	"cve2023": true, "cve2024": true, "cve2025": true, "cve2026": true,
+	"cnvd": true, "cnnvd": true, "cnnvd2020": true, "cnnvd2021": true,
+	"xss": true, "sqli": true, "rce": true, "lfi": true, "rfi": true,
+	"ssrf": true, "xxe": true, "ssti": true, "cmdi": true, "crlf": true,
+	"csrf": true, "idor": true, "redirect": true, "open-redirect": true,
+	"traversal": true, "path-traversal": true, "directory-traversal": true,
+	"injection": true, "code-injection": true, "command-injection": true,
+	"sql-injection": true, "nosqli": true, "blind-sqli": true,
+	"file-inclusion": true, "file-upload": true, "unrestricted-file-upload": true,
+	"upload": true,
+	"bypass": true, "auth-bypass": true, "authentication-bypass": true,
+	"disclosure": true, "exposure": true, "information-disclosure": true,
+	"info-leak": true, "info": true,
+	"misconfig": true, "misconfiguration": true, "default-login": true,
+	"panel": true, "exposed-panel": true, "login": true, "detect": true,
+	"detection": true, "discovery": true, "fingerprint": true,
+	"tech": true, "technology": true, "technologies": true,
+	"takeover": true, "subdomain-takeover": true,
+	"dos": true, "ddos": true, "race-condition": true,
+	"deserialization": true, "deserialize": true, "insecure-deserialization": true,
+	"cache": true, "cache-poisoning": true,
+	"smuggling": true, "http-smuggling": true, "request-smuggling": true,
+	"prototype-pollution": true, "proto-pollution": true,
+	"oauth": true, "saml": true, "jwt": true, "jwt-none": true,
+	"clickjacking": true, "cors": true, "csp": true, "hsts": true,
+	"security": true, "vulnerability": true, "vuln": true,
+	"exploit": true, "exploitation": true, "attack": true,
+	"critical": true, "high": true, "medium": true, "low": true,
+	"oast": true, "dns": true, "http": true, "tcp": true,
+	"kev": true, "vkev": true, "fuzzing": true, "fuzz": true,
+	"generic": true, "misc": true, "miscellaneous": true,
+	"header": true, "headers": true, "cookie": true, "cookies": true,
+	"backup": true, "backups": true, "config": true, "configuration": true,
+	"debug": true, "error": true, "errors": true,
+	"api": true, "graphql": true, "rest": true, "soap": true, "wsdl": true,
+	"swagger": true, "openapi": true,
+	"json": true, "xml": true, "yaml": true, "yml": true,
+	"git": true, "svn": true, "hg": true, "mercurial": true,
+	"env": true, "dotenv": true, "environment": true,
+	"ssh": true, "ftp": true, "smtp": true, "rdp": true, "snmp": true,
+	"database": true, "db": true, "mysql": true, "postgresql": true,
+	"mssql": true, "oracle-db": true, "mongodb": true, "redis": true,
+	"memcached": true, "elasticsearch": true, "couchdb": true,
+	"printer": true, "camera": true, "router": true, "firewall": true,
+	"vpn": true, "waf": true, "cdn": true, "load-balancer": true,
+	"proxy": true, "reverse-proxy": true,
+	"ssl": true, "tls": true, "pki": true, "certificate": true,
 }
 
 // FilterTemplatesByTech returns only templates relevant to the detected
-// technology stack. Templates with no vendor-specific labels always pass.
+// technology stack. Templates whose labels are ALL in the genericLabels set
+// (or empty) always pass. Templates with any non-generic label are
+// vendor/product-specific and only run when matching tech is detected.
 func FilterTemplatesByTech(templates []Template, detectedTech []string) []Template {
-	if len(detectedTech) == 0 {
-		// No tech detected — only run templates without vendor-specific labels
-		return filterGeneric(templates)
-	}
-
 	techSet := make(map[string]bool, len(detectedTech))
 	for _, t := range detectedTech {
 		techSet[strings.ToLower(t)] = true
@@ -396,42 +359,44 @@ func FilterTemplatesByTech(templates []Template, detectedTech []string) []Templa
 
 	var filtered []Template
 	for _, tmpl := range templates {
-		requiredVendor := ""
+		// Collect vendor/product labels from this template
+		var vendorLabels []string
+		allGeneric := true
 		for _, label := range tmpl.Brief.Label {
-			if vendor, ok := vendorLabels[strings.ToLower(label)]; ok {
-				requiredVendor = vendor
-				break
+			if !genericLabels[strings.ToLower(label)] {
+				allGeneric = false
+				vendorLabels = append(vendorLabels, strings.ToLower(label))
 			}
 		}
 
-		if requiredVendor == "" {
-			// No vendor requirement — generic template, always run
+		if allGeneric {
+			// Template only has generic labels — always run
 			filtered = append(filtered, tmpl)
-		} else if techSet[strings.ToLower(requiredVendor)] {
-			// Vendor matches detected tech
-			filtered = append(filtered, tmpl)
+			continue
 		}
-		// else: vendor-specific template but vendor not detected → skip
+
+		// Template has vendor-specific labels — check if any match detected tech
+		if len(techSet) == 0 {
+			continue // no tech detected, skip vendor templates
+		}
+		for _, vl := range vendorLabels {
+			if techSet[vl] || techMatchesLabel(techSet, vl) {
+				filtered = append(filtered, tmpl)
+				break
+			}
+		}
 	}
 	return filtered
 }
 
-// filterGeneric returns templates that have no vendor/tech-specific labels.
-func filterGeneric(templates []Template) []Template {
-	var filtered []Template
-	for _, tmpl := range templates {
-		hasVendor := false
-		for _, label := range tmpl.Brief.Label {
-			if _, ok := vendorLabels[strings.ToLower(label)]; ok {
-				hasVendor = true
-				break
-			}
-		}
-		if !hasVendor {
-			filtered = append(filtered, tmpl)
+// techMatchesLabel checks if a vendor label loosely matches any detected tech.
+func techMatchesLabel(techSet map[string]bool, label string) bool {
+	for tech := range techSet {
+		if strings.Contains(tech, label) || strings.Contains(label, tech) {
+			return true
 		}
 	}
-	return filtered
+	return false
 }
 
 // LoadTemplateVersion reads the .version file inside the template directory.
