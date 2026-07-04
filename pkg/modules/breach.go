@@ -25,9 +25,10 @@ func ScanBreach(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 	}
 	redirectParams := []string{"redirect_uri", "redirect", "return_url", "RelayState", "SAMLRequest"}
 
+	baseURL := core.StripQuery(target.URL)
 	for _, path := range oauthPaths {
 		for _, param := range redirectParams {
-			testURL := target.URL + path + "?" + param + "=https://evil.com"
+			testURL := baseURL + path + "?" + param + "=https://evil.com"
 			req, err := http.NewRequest("GET", testURL, nil)
 			if err != nil {
 				continue

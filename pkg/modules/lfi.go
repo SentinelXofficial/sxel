@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/pkg/core"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -149,7 +148,7 @@ func ScanLFI(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 				"include_path",
 			}
 			for _, marker := range rfiMarkers {
-				if strings.Contains(strings.ToLower(body), strings.ToLower(marker)) {
+				if strings.Contains(strings.ToLower(body), strings.ToLower(marker)) && !strings.Contains(strings.ToLower(baseline), strings.ToLower(marker)) {
 					results = append(results, core.ScanResult{
 						Type:      "RFI (Remote File Inclusion)",
 						URL:       testURL,
@@ -192,7 +191,9 @@ func ScanLFI(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 					d.Set(inp.Name, pl.Payload)
 					body, status, err = core.DoPOST(client, cfg, form.Action, d)
 				} else {
-					u, _ := core.SetParam(form.Action, inp.Name, pl.Payload)
+					d := core.FormDefaults(form)
+					d.Set(inp.Name, pl.Payload)
+					u, _ := core.SetFormParams(form.Action, d)
 					body, status, err = core.DoGET(client, cfg, u)
 				}
 				if err != nil {
@@ -245,7 +246,7 @@ func lfiLogPoisonProbe(client *http.Client, cfg *core.Config, target core.CrawlR
 	core.ApplyHeaders(poisonReq, cfg)
 	poisonReq.Header.Set("User-Agent", poisonMarker)
 	if resp, err := client.Do(poisonReq); err == nil {
-		io.ReadAll(resp.Body) //nolint:errcheck
+		core.ReadBody(resp.Body)
 		resp.Body.Close()
 	}
 

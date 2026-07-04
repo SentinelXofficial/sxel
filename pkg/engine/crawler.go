@@ -210,7 +210,7 @@ func ExtractForms(body, baseURL string) []core.Form {
 						}
 					}
 				}
-				for c := ch.FirstChild; c != nil; c = ch.NextSibling {
+				for c := ch.FirstChild; c != nil; c = c.NextSibling {
 					gather(c)
 				}
 			}

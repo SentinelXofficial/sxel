@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -115,8 +114,6 @@ func WAFBypassSQL(payload string) []string {
 	add := func(s string) {
 		if s != payload { out = append(out, s) }
 	}
-	add(url.QueryEscape(payload))
-	add(url.QueryEscape(url.QueryEscape(payload)))
 	add(randCase(payload))
 	add(strings.ReplaceAll(payload, " ", "/**/"))
 	add(strings.ReplaceAll(payload, " ", "%09"))
@@ -161,7 +158,6 @@ func WAFBypassXSS(payload string) []string {
 	add(strings.ReplaceAll(payload, "alert('XSS')", "alert`XSS`"))
 	add(strings.ReplaceAll(payload, "\"", "&#34;"))
 	add(strings.ReplaceAll(payload, "'XSS'", "`XSS`"))
-	add(url.QueryEscape(payload))
 	return dedup(out)
 }
 

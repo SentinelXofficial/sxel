@@ -80,12 +80,16 @@ func (c *CheckpointState) MarkScanned(u string, findings []ScanResult) {
 }
 
 // save serialises state to disk. Must be called under c.mu.
+// Uses write-to-temp-then-rename to avoid corrupting the checkpoint file
+// if the process crashes mid-write.
 func (c *CheckpointState) save() {
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(c.file, data, 0600)
+	tmp := c.file + ".tmp"
+	_ = os.WriteFile(tmp, data, 0600)
+	_ = os.Rename(tmp, c.file)
 }
 
 // Delete removes the checkpoint file after a fully-completed scan so stale

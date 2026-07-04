@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/pkg/core"
-	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -111,7 +110,7 @@ func EnumerateSubdomains(client *http.Client, cfg *core.Config, targetURL string
 // queryCrtSh fetches subdomain entries from crt.sh for the given domain.
 func queryCrtSh(domain string, cfg *core.Config) []string {
 	url := fmt.Sprintf("https://crt.sh/?q=%%.%s&output=json", domain)
-	httpClient := &http.Client{Timeout: 10 * time.Second}
+	httpClient := core.NewHTTPClient(cfg)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil
@@ -130,16 +129,13 @@ func queryCrtSh(domain string, cfg *core.Config) []string {
 		return nil
 	}
 
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil
-	}
+	b := core.ReadBody(resp.Body)
 
 	var entries []struct {
 		CommonName string `json:"common_name"`
 		NameValue  string `json:"name_value"`
 	}
-	if err := json.Unmarshal(b, &entries); err != nil {
+	if err := json.Unmarshal([]byte(b), &entries); err != nil {
 		return nil
 	}
 

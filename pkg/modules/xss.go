@@ -72,7 +72,9 @@ func ScanXSS(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 						d.Set(inp.Name, pld)
 						body, _, err = core.DoPOST(client, cfg, form.Action, d)
 					} else {
-						testURL, _ := core.SetParam(form.Action, inp.Name, pld)
+						d := core.FormDefaults(form)
+						d.Set(inp.Name, pld)
+						testURL, _ := core.SetFormParams(form.Action, d)
 						body, _, err = core.DoGET(client, cfg, testURL)
 					}
 					if err != nil {

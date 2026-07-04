@@ -56,7 +56,8 @@ func Update() {
 	}
 	url := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", version.Repo, latest, asset)
 
-	resp, err := http.Get(url)
+	dlClient := &http.Client{Timeout: 120 * time.Second}
+	resp, err := dlClient.Get(url)
 	if err != nil {
 		output.Error("Download error: %v", err)
 		fmt.Printf("Get the latest release from:\n    https://github.com/%s/releases/latest\n", version.Repo)

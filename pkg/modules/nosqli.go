@@ -125,6 +125,8 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 		if cfg.Verbose {
 			output.Verbose("[nosql-get] param=%s", param)
 		}
+		// Fetch a clean baseline to filter out pre-existing error strings
+		baseline := FetchBaseline(client, cfg, target.URL, param)
 
 	NoSQLURLLoop:
 		for _, op := range nosqlURLOps {
@@ -148,10 +150,10 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 				continue
 			}
 
-			// Error-based: MongoDB errors in response
+			// Error-based: MongoDB errors in response that are NOT in baseline
 			trueBodyLow := strings.ToLower(trueBody)
 			for _, marker := range nosqlErrorMarkers {
-				if strings.Contains(trueBodyLow, marker) {
+				if strings.Contains(trueBodyLow, marker) && !strings.Contains(baseline.BodyLow, marker) {
 					results = append(results, core.ScanResult{
 						Type: "NoSQL Injection (Error-Based)",
 						URL:  trueURL, Method: "GET", Parameter: param,

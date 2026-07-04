@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/pkg/core"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -79,7 +78,7 @@ func ScanCachePoison(client *http.Client, cfg *core.Config, target core.CrawlRes
 	if err != nil {
 		return results
 	}
-	io.ReadAll(resp.Body) //nolint:errcheck
+	core.ReadBody(resp.Body)
 	resp.Body.Close()
 
 	hasCache := false
@@ -117,9 +116,9 @@ func ScanCachePoison(client *http.Client, cfg *core.Config, target core.CrawlRes
 			if err != nil {
 				continue
 			}
-			bodyBytes, _ := io.ReadAll(resp2.Body)
+			bodyBytes := core.ReadBody(resp2.Body)
 			resp2.Body.Close()
-			body := string(bodyBytes)
+			body := bodyBytes
 
 			// Check for reflection in response body, Location header, or Set-Cookie
 			reflected := false
@@ -170,9 +169,9 @@ func ScanCachePoison(client *http.Client, cfg *core.Config, target core.CrawlRes
 			if err != nil {
 				continue
 			}
-			bodyBytes, _ := io.ReadAll(resp2.Body)
+			bodyBytes := core.ReadBody(resp2.Body)
 			resp2.Body.Close()
-			body := string(bodyBytes)
+			body := bodyBytes
 
 			if strings.Contains(body, val) || strings.Contains(resp2.Header.Get("Location"), val) {
 				results = append(results, core.ScanResult{
@@ -202,9 +201,9 @@ func ScanCachePoison(client *http.Client, cfg *core.Config, target core.CrawlRes
 		if err != nil {
 			continue
 		}
-		bodyBytes, _ := io.ReadAll(resp2.Body)
+		bodyBytes := core.ReadBody(resp2.Body)
 		resp2.Body.Close()
-		body := string(bodyBytes)
+		body := bodyBytes
 
 		// Check if absolute URLs in the response body point to our injected host
 		scheme := "https://"

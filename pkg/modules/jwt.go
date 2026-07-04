@@ -279,7 +279,32 @@ func testJWTToken(
 		return nil
 	}
 	core.ApplyHeaders(req, cfg)
-	req.Header.Set("Authorization", "Bearer "+modToken)
+
+	// Inject the modified token via the same channel it was found in.
+	// If the original JWT came from a cookie, replace that cookie value
+	// AND strip the Authorization header to avoid the original token
+	// still authenticating the request.
+	if strings.HasPrefix(src, "cookie:") {
+		cookieName := strings.TrimPrefix(src, "cookie:")
+		req.Header.Del("Authorization")
+		// Rebuild the Cookie header with the modified JWT, keeping other cookies intact
+		var cookieParts []string
+		if cfg.Cookie != "" {
+			for _, part := range strings.Split(cfg.Cookie, ";") {
+				kv := strings.SplitN(strings.TrimSpace(part), "=", 2)
+				if len(kv) == 2 {
+					if strings.EqualFold(strings.TrimSpace(kv[0]), cookieName) {
+						cookieParts = append(cookieParts, cookieName+"="+modToken)
+					} else {
+						cookieParts = append(cookieParts, strings.TrimSpace(part))
+					}
+				}
+			}
+		}
+		req.Header.Set("Cookie", strings.Join(cookieParts, "; "))
+	} else {
+		req.Header.Set("Authorization", "Bearer "+modToken)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

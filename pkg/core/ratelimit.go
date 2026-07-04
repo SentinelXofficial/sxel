@@ -13,6 +13,9 @@ type RateLimiter struct {
 // newRateLimiter creates a RateLimiter that allows rps requests per second.
 // The burst capacity equals rps (one second's worth of tokens).
 func NewRateLimiter(rps int) *RateLimiter {
+	if rps <= 0 {
+		rps = 1 // defensive: avoid panic on invalid input
+	}
 	rl := &RateLimiter{
 		tokens: make(chan struct{}, rps),
 		done:   make(chan struct{}),

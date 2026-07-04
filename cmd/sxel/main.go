@@ -133,12 +133,23 @@ Examples:
 	}
 	// ── Misc ─────────────────────────────────────────────────────────────────
 	updateFlag := flag.Bool("update", false, "Update sxel to latest version")
+	updateTemplatesFlag := flag.Bool("update-templates", false, "Update templates to latest version")
+	convertNucleiFlag := flag.String("convert-nuclei", "", "Convert Nuclei templates from given directory to sxel format")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 
 	flag.Parse()
 
 	if *updateFlag {
 		updater.Update()
+		return
+	}
+	if *updateTemplatesFlag {
+		updater.UpdateTemplates(*templateDir)
+		return
+	}
+	if *convertNucleiFlag != "" {
+		output.Info("Converting Nuclei templates from %s → %s ...", *convertNucleiFlag, *templateDir)
+		updater.ConvertNucleiTemplates(*convertNucleiFlag, *templateDir)
 		return
 	}
 	if *versionFlag {
@@ -429,13 +440,32 @@ Examples:
 
 	// ── Load YAML templates ──────────────────────────────────────────────────
 	var loadedTemplates []engine.Template
+	var templatesVersion string
 	if cfg.Templates {
+		// Auto-download on first run if no templates exist yet
+		updater.EnsureTemplates(cfg.TemplateDir)
+
 		var loadErr error
 		loadedTemplates, loadErr = engine.LoadTemplates(cfg.TemplateDir)
 		if loadErr != nil {
 			output.Warn("Cannot load templates from %q: %v — continuing without templates", cfg.TemplateDir, loadErr)
 		} else if len(loadedTemplates) > 0 {
-			output.Info("Loaded %d template(s) from %s", len(loadedTemplates), cfg.TemplateDir)
+			templatesVersion = engine.LoadTemplateVersion(cfg.TemplateDir)
+			verStr := ""
+			if templatesVersion != "" {
+				verStr = fmt.Sprintf(" (%s)", templatesVersion)
+			}
+			output.Info("Loaded %d template(s) from %s%s", len(loadedTemplates), cfg.TemplateDir, verStr)
+		}
+
+		// Non-blocking check for template updates (fire-and-forget)
+		if templatesVersion != "" {
+			go func(localVer string) {
+				latest := updater.FetchLatestTemplatesVersion()
+				if latest != "" && latest != localVer {
+					output.Warn("Templates %s available (you have %s) — run: sxel --update-templates", latest, localVer)
+				}
+			}(templatesVersion)
 		}
 	}
 
@@ -448,6 +478,7 @@ Examples:
 			output.Warn("Cannot start OOB callback server: %v", oobErr)
 		} else {
 			defer oobServer.Close()
+			cfg.OOBAddress = oobServer.Address
 		}
 	}
 
@@ -463,7 +494,7 @@ Examples:
 	if len(rawTargets) == 1 {
 		fmt.Println()
 		output.Info("Running site-wide checks...")
-		res, urls, forms := scanTarget(client, cfg, rawTargets[0], *useRobots, loadedTemplates)
+		res, urls, forms := scanTarget(client, cfg, rawTargets[0], *useRobots, loadedTemplates, oobServer)
 		allResults = res
 		totalURLs = urls
 		totalForms = forms
@@ -479,7 +510,8 @@ Examples:
 			go func(tg string) {
 				defer wg.Done()
 				defer func() { <-sem }()
-				res, urls, forms := scanTarget(client, cfg, tg, *useRobots, loadedTemplates)
+				cfgCopy := *cfg
+				res, urls, forms := scanTarget(client, &cfgCopy, tg, *useRobots, loadedTemplates, oobServer)
 				mu.Lock()
 				allResults = append(allResults, res...)
 				totalURLs += urls
@@ -570,7 +602,7 @@ func printModuleSummary(cfg *core.Config) {
 	}
 }
 
-func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots bool, templates []engine.Template) ([]core.ScanResult, int, int) {
+func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots bool, templates []engine.Template, oobServer *engine.OOBServer) ([]core.ScanResult, int, int) {
 	var allResults []core.ScanResult
 	var mu sync.Mutex
 
@@ -623,7 +655,11 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 
 	pageChan := make(chan core.CrawlResult, 200)
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, cfg.Threads)
+	threads := cfg.Threads
+	if threads < 1 {
+		threads = 1
+	}
+	sem := make(chan struct{}, threads)
 	var doneCount int64
 	progressDone := make(chan struct{})
 	startTime := time.Now()
@@ -762,6 +798,10 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 			}
 			if cfg.XXEScan {
 				local = append(local, modules.ScanXXE(client, cfg, t)...)
+			}
+			// Run OOB probes for blind SSRF/XXE/CMDI detection
+			if oobServer != nil {
+				local = append(local, engine.RunOOBProbes(client, cfg, t.URL, oobServer)...)
 			}
 			if cfg.NoSQLScan {
 				local = append(local, modules.ScanNoSQLi(client, cfg, t)...)
@@ -1052,6 +1092,7 @@ func escHTML(s string) string {
 	s = strings.ReplaceAll(s, "<", "&lt;")
 	s = strings.ReplaceAll(s, ">", "&gt;")
 	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
 	return s
 }
 
@@ -1150,6 +1191,11 @@ func runSnipe(client *http.Client, cfg *core.Config, targetURL string, templates
 }
 
 func csvEscape(s string) string {
+	// Prevent CSV/Formula injection: prefix with single quote if the field
+	// starts with a character that spreadsheet apps interpret as a formula.
+	if len(s) > 0 && (s[0] == '=' || s[0] == '+' || s[0] == '-' || s[0] == '@') {
+		s = "'" + s
+	}
 	if strings.ContainsAny(s, ",\"\n") {
 		return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
 	}

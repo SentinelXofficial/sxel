@@ -49,6 +49,13 @@ func Plain(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 }
 
+// Status prints a cyan [*] line with timestamp — for lifecycle events like
+// "Preparing Engine", "Downloading templates", etc.
+func Status(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Printf("%s %s %s\n", color.Cyan("[*]"), color.Gray(now()), msg)
+}
+
 // Separator prints a horizontal rule.
 func Separator() {
 	fmt.Println("────────────────────────────────────────────────────────────")

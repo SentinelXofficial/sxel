@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/pkg/core"
-	"io"
 	"net/http"
 	"time"
 )
@@ -55,7 +54,7 @@ func TestRateLimiting(client *http.Client, cfg *core.Config, targetURL string) [
 				resultsCh <- outcome{err: err, ms: elapsed}
 				return
 			}
-			io.ReadAll(resp.Body) //nolint:errcheck
+			core.ReadBody(resp.Body)
 			resp.Body.Close()
 			resultsCh <- outcome{status: resp.StatusCode, ms: elapsed}
 		}()

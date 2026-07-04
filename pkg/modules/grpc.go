@@ -28,8 +28,9 @@ func ScanGrpc(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 
 	host := extractHostFromURL(target.URL)
 
+	baseURL := core.StripQuery(target.URL)
 	for _, path := range grpcGatewayPaths {
-		testURL := target.URL + path
+		testURL := baseURL + path
 		req, err := http.NewRequest("GET", testURL, nil)
 		if err != nil {
 			continue
@@ -75,12 +76,7 @@ func ScanGrpc(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 		}
 	}
 
-	// ── gRPC reflection check (TCP) ──────────────────────────────────────────
-	// gRPC reflection uses HTTP/2 on the same port or port+1
-	if resp, err := http.Get(fmt.Sprintf("http://%s:50051/", host)); err == nil {
-		resp.Body.Close()
-	}
-
+	// ── gRPC common ports (TCP) ──────────────────────────────────────────
 	// Try common gRPC ports via TCP
 	grpcPorts := []string{":50051", ":9090", ":8080"}
 	for _, port := range grpcPorts {

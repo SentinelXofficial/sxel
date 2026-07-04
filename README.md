@@ -138,7 +138,7 @@ moves:
 - `flip: true` — negative matching (header NOT present)
 - `head:` — custom request headers
 
-## Sprint B Engines (v1.0.3)
+## Sprint B Engines (v1.0.4)
 
 | Flag | Engine | Description |
 |------|--------|-------------|
@@ -152,7 +152,7 @@ moves:
 ## Output
 
 ```
-[INFO] 2026-07-01 22:00:00 sxel v1.0.3 started
+[INFO] 2026-07-01 22:00:00 sxel v1.0.4 started
 [INFO] 2026-07-01 22:00:00 Loaded 38 scan module(s)
 [INFO] 2026-07-01 22:00:00 Target: https://target.com
 

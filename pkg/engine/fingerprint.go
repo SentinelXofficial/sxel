@@ -162,7 +162,7 @@ func NormalizeURL(rawURL string) string {
 	if err != nil {
 		return rawURL
 	}
-	path := numParam.ReplaceAllString(u.Path, "/{id}")
+	path := numParam.ReplaceAllString(u.Path, "/{id}$1")
 	return fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, path)
 }
 

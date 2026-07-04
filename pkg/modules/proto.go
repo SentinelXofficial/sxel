@@ -100,10 +100,12 @@ func ScanProtoPollution(client *http.Client, cfg *core.Config, target core.Crawl
 			baselineLow := strings.ToLower(baselineBody)
 
 			// 1. JSON error messages that reveal prototype pollution acceptance
+			// Only use true error/side-effect markers, not key names that
+			// could be echoed back from the payload itself (false positive).
 			errorMarkers := []string{
-				"__proto__", "prototype", "constructor",
 				"cannot read properties", "undefined is not",
 				"typeerror", "unexpected token",
+				"is not a function", "cannot set property",
 			}
 			for _, marker := range errorMarkers {
 				if strings.Contains(bodyLow, marker) && !strings.Contains(baselineLow, marker) {

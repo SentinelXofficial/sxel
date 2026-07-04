@@ -98,7 +98,9 @@ func ScanBlindSQLiTime(client *http.Client, cfg *core.Config, target core.CrawlR
 				if form.Method == "POST" {
 					_, status, err = core.DoPOST(client, cfg, form.Action, d)
 				} else {
-					u, _ := core.SetParam(form.Action, inp.Name, tp.payload)
+					d := core.FormDefaults(form)
+					d.Set(inp.Name, tp.payload)
+					u, _ := core.SetFormParams(form.Action, d)
 					_, status, err = core.DoGET(client, cfg, u)
 				}
 				elapsed := time.Since(t1)
@@ -208,8 +210,12 @@ func ScanBooleanBlindSQLi(client *http.Client, cfg *core.Config, target core.Cra
 						continue
 					}
 				} else {
-					uTrue, _ := core.SetParam(form.Action, inp.Name, pr.trueP)
-					uFalse, _ := core.SetParam(form.Action, inp.Name, pr.falseP)
+					dTrue := core.FormDefaults(form)
+					dTrue.Set(inp.Name, pr.trueP)
+					uTrue, _ := core.SetFormParams(form.Action, dTrue)
+					dFalse := core.FormDefaults(form)
+					dFalse.Set(inp.Name, pr.falseP)
+					uFalse, _ := core.SetFormParams(form.Action, dFalse)
 					bodyTrue, statusTrue, err = core.DoGET(client, cfg, uTrue)
 					if err != nil {
 						continue

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/SentinelXofficial/sxel/internal/output"
 	"github.com/SentinelXofficial/sxel/pkg/core"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -24,7 +23,7 @@ func AuditCookies(client *http.Client, cfg *core.Config, targetURL string) []cor
 	if err != nil {
 		return results
 	}
-	io.ReadAll(resp.Body) //nolint:errcheck
+	core.ReadBody(resp.Body)
 	resp.Body.Close()
 
 	cookies := resp.Cookies()
@@ -124,15 +123,27 @@ func AuditCookies(client *http.Client, cfg *core.Config, targetURL string) []cor
 		}
 
 		// ── Long expiry — session cookies should be short-lived ──────────
+		longExpiry := false
+		expiryDays := 0
 		if ck.MaxAge > 86400*30 && ck.MaxAge > 0 {
+			longExpiry = true
+			expiryDays = ck.MaxAge / 86400
+		} else if !ck.Expires.IsZero() {
+			days := int(time.Until(ck.Expires).Hours() / 24)
+			if days > 30 {
+				longExpiry = true
+				expiryDays = days
+			}
+		}
+		if longExpiry {
 			results = append(results, core.ScanResult{
 				Type:      "Cookie Security — Long Expiry",
 				URL:       targetURL,
 				Method:    "GET",
 				Parameter: ck.Name,
-				Payload:   fmt.Sprintf("MaxAge=%ds", ck.MaxAge),
+				Payload:   fmt.Sprintf("expires in %d days", expiryDays),
 				Severity:  "LOW",
-				Evidence:  fmt.Sprintf("Cookie %q expires in %d days — consider a shorter lifetime", ck.Name, ck.MaxAge/86400),
+				Evidence:  fmt.Sprintf("Cookie %q expires in %d days — consider a shorter lifetime", ck.Name, expiryDays),
 				Timestamp: time.Now(),
 			})
 		}

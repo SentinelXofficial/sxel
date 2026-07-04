@@ -15,9 +15,9 @@ import (
 var ssrfURLParams = []string{
 	"url", "uri", "src", "source", "href", "dest", "destination",
 	"redirect", "target", "redir", "page", "path", "file",
-	"fetch", "load", "get", "next", "ref", "return", "link",
+	"fetch", "load", "next", "ref", "return", "link",
 	"location", "host", "endpoint", "resource", "callback",
-	"webhook", "proxy", "to", "from", "out", "out_url",
+	"webhook", "proxy", "out_url",
 }
 
 // ssrfProbe is an internal address we try to hit via the target server.
@@ -248,7 +248,9 @@ func ScanSSRF(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 					d.Set(inp.Name, probe.Payload)
 					body, status, err = core.DoPOST(client, cfg, form.Action, d)
 				} else {
-					u, _ := core.SetParam(form.Action, inp.Name, probe.Payload)
+					d := core.FormDefaults(form)
+					d.Set(inp.Name, probe.Payload)
+					u, _ := core.SetFormParams(form.Action, d)
 					body, status, err = core.DoGET(client, cfg, u)
 				}
 				if err != nil {

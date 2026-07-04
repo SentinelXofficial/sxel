@@ -120,14 +120,34 @@ func RunTemplates(client *http.Client, cfg *core.Config, targetURL string, templ
 				reqURL := strings.ReplaceAll(rawPath, "{{BaseURL}}", baseURL)
 				reqURL = strings.ReplaceAll(reqURL, "{{Hostname}}", hostname)
 
+				// Substitute OOB/interactsh URL if available
+				oobURL := cfg.OOBAddress
+				if oobURL == "" {
+					oobURL = "127.0.0.1:0" // placeholder; OOB server not active
+				}
+				reqURL = strings.ReplaceAll(reqURL, "{{interactsh-url}}", oobURL)
+				reqURL = strings.ReplaceAll(reqURL, "{{OOB_URL}}", oobURL)
+
+				// Substitute placeholders in body too
+				reqBody := move.Body
+				reqBody = strings.ReplaceAll(reqBody, "{{BaseURL}}", baseURL)
+				reqBody = strings.ReplaceAll(reqBody, "{{Hostname}}", hostname)
+				reqBody = strings.ReplaceAll(reqBody, "{{interactsh-url}}", oobURL)
+				reqBody = strings.ReplaceAll(reqBody, "{{OOB_URL}}", oobURL)
+
 				// Build request
-				req, err := http.NewRequest(move.Verb, reqURL, strings.NewReader(move.Body))
+				req, err := http.NewRequest(move.Verb, reqURL, strings.NewReader(reqBody))
 				if err != nil {
 					continue
 				}
 				core.ApplyHeaders(req, cfg)
 				for k, v := range move.Head {
-					req.Header.Set(k, v)
+					// Substitute placeholders in header values
+					hv := strings.ReplaceAll(v, "{{BaseURL}}", baseURL)
+					hv = strings.ReplaceAll(hv, "{{Hostname}}", hostname)
+					hv = strings.ReplaceAll(hv, "{{interactsh-url}}", oobURL)
+					hv = strings.ReplaceAll(hv, "{{OOB_URL}}", oobURL)
+					req.Header.Set(k, hv)
 				}
 
 				// Send
@@ -269,4 +289,14 @@ func mapLevel(level string) string {
 	default:
 		return "INFO"
 	}
+}
+
+// LoadTemplateVersion reads the .version file inside the template directory.
+// Returns the version string (e.g. "v0.1.0") or an empty string if not found.
+func LoadTemplateVersion(dir string) string {
+	data, err := os.ReadFile(filepath.Join(dir, ".version"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }

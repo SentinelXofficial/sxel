@@ -113,7 +113,8 @@ func ScanCSRF(cfg *core.Config, target core.CrawlResult) []core.ScanResult {
 // Returns true if the server rejected the request (token IS enforced).
 func testCSRFEnforcement(form core.Form, action, csrfField, pageURL string, cfg *core.Config) bool {
 	// Build request without the CSRF token
-	if strings.ToUpper(form.Method) == "POST" {
+	method := strings.ToUpper(form.Method)
+	if method == "POST" || method == "PUT" || method == "DELETE" || method == "PATCH" {
 		data := url.Values{}
 		for _, inp := range form.Inputs {
 			if inp.Name == csrfField {
@@ -128,7 +129,7 @@ func testCSRFEnforcement(form core.Form, action, csrfField, pageURL string, cfg 
 		// Use the same client configuration as the rest of the scanner
 		// (preserves proxy, TLS skip-verify, and redirect behaviour).
 		client := core.NewHTTPClient(cfg)
-		req, err := http.NewRequest("POST", action, strings.NewReader(data.Encode()))
+		req, err := http.NewRequest(method, action, strings.NewReader(data.Encode()))
 		if err != nil {
 			return true // assume enforced
 		}
@@ -142,5 +143,5 @@ func testCSRFEnforcement(form core.Form, action, csrfField, pageURL string, cfg 
 		// 200 or 3xx = likely accepted without token → NOT enforced
 		return !(resp.StatusCode >= 200 && resp.StatusCode < 400)
 	}
-	return true // can't test non-POST forms for enforcement
+	return false // can't test other methods — assume NOT enforced
 }

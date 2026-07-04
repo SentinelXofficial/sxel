@@ -206,7 +206,7 @@ func detectUploadSuccess(resp *http.Response, body, filename, baseURL string, cl
 		if loc != "" {
 			base, err := url.Parse(baseURL)
 			if err != nil {
-				return true, fmt.Sprintf("upload redirect to %s", loc)
+				return false, ""
 			}
 			fileURL := engine.ResolveURL(base, loc)
 			if fileURL != "" {
@@ -218,7 +218,7 @@ func detectUploadSuccess(resp *http.Response, body, filename, baseURL string, cl
 					return true, fmt.Sprintf("redirect to %s — file accessible (HTTP %d)", fileURL, accStatus)
 				}
 			}
-			return true, fmt.Sprintf("upload redirect to %s", loc)
+			return false, ""
 		}
 	}
 

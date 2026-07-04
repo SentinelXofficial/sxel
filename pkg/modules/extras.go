@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/SentinelXofficial/sxel/pkg/core"
 	"github.com/SentinelXofficial/sxel/pkg/payload"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -28,9 +27,9 @@ func ScanOpenRedirect(client *http.Client, cfg *core.Config, target core.CrawlRe
 	}
 	redirectParamHints := []string{
 		"url", "redirect", "redirect_url", "return", "return_url",
-		"next", "target", "dest", "destination", "redir",
-		"redirect_to", "go", "goto", "link", "out", "continue",
-		"from", "to", "back", "location", "forward", "callback",
+		"target", "dest", "destination", "redir",
+		"redirect_to", "goto", "link", "continue",
+		"location", "forward", "callback",
 	}
 
 	noRedir := &http.Client{
@@ -69,7 +68,7 @@ func ScanOpenRedirect(client *http.Client, cfg *core.Config, target core.CrawlRe
 			if err != nil {
 				continue
 			}
-			io.ReadAll(resp.Body) //nolint:errcheck
+			core.ReadBody(resp.Body)
 			resp.Body.Close()
 
 			loc := resp.Header.Get("Location")
@@ -205,7 +204,9 @@ func ScanSSTI(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 			if form.Method == "POST" {
 				formBaseline, _, _ = core.DoPOST(client, cfg, form.Action, dBase)
 			} else {
-				if u, err := core.SetParam(form.Action, inp.Name, "vulntest1234"); err == nil {
+				dBase := core.FormDefaults(form)
+				dBase.Set(inp.Name, "vulntest1234")
+				if u, err := core.SetFormParams(form.Action, dBase); err == nil {
 					formBaseline, _, _ = core.DoGET(client, cfg, u)
 				}
 			}
@@ -218,7 +219,7 @@ func ScanSSTI(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 				if form.Method == "POST" {
 					body, _, err = core.DoPOST(client, cfg, form.Action, d)
 				} else {
-					u, _ := core.SetParam(form.Action, inp.Name, t.payload)
+					u, _ := core.SetFormParams(form.Action, d)
 					body, _, err = core.DoGET(client, cfg, u)
 				}
 				if err != nil {
@@ -279,9 +280,9 @@ func ScanJSONInjection(client *http.Client, cfg *core.Config, target core.CrawlR
 				if err != nil {
 					continue
 				}
-				b, _ := io.ReadAll(resp.Body)
+				b := core.ReadBody(resp.Body)
 				resp.Body.Close()
-				if ev := DetectSQLi(string(b)); ev != "" {
+				if ev := DetectSQLi(b); ev != "" {
 					results = append(results, core.ScanResult{
 						Type: "SQL Injection via JSON Body", URL: form.Action,
 						Method: "POST/JSON", Parameter: inp.Name, Payload: p,
@@ -309,9 +310,9 @@ func ScanJSONInjection(client *http.Client, cfg *core.Config, target core.CrawlR
 				if err != nil {
 					continue
 				}
-				b, _ := io.ReadAll(resp.Body)
+				b := core.ReadBody(resp.Body)
 				resp.Body.Close()
-				if strings.Contains(string(b), p) {
+				if strings.Contains(b, p) {
 					results = append(results, core.ScanResult{
 						Type: "XSS via JSON Body", URL: form.Action,
 						Method: "POST/JSON", Parameter: inp.Name, Payload: p,

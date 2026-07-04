@@ -85,7 +85,11 @@ func ScanStrobe(client *http.Client, cfg *core.Config, target core.CrawlResult, 
 
 	// Run all relevant jobs concurrently
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, cfg.Threads)
+	threads := cfg.Threads
+	if threads < 1 {
+		threads = 1
+	}
+	sem := make(chan struct{}, threads)
 	for _, j := range jobs {
 		wg.Add(1)
 		sem <- struct{}{}

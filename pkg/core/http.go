@@ -76,6 +76,27 @@ func SetParam(rawURL, param, value string) (string, error) {
 	return p.String(), nil
 }
 
+// SetFormParams builds a GET URL with all form fields set as query parameters.
+// It preserves any query parameters already present in rawURL and merges the
+// provided url.Values (typically from FormDefaults, with one field overridden
+// by the test payload). This mirrors the POST form pattern where every field is
+// sent, so multi-field forms are tested correctly.
+func SetFormParams(rawURL string, params url.Values) (string, error) {
+	p, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+	q := p.Query()
+	for k, vals := range params {
+		q.Del(k)
+		for _, v := range vals {
+			q.Add(k, v)
+		}
+	}
+	p.RawQuery = q.Encode()
+	return p.String(), nil
+}
+
 func FormDefaults(f Form) url.Values {
 	v := url.Values{}
 	for _, inp := range f.Inputs {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/SentinelXofficial/sxel/pkg/core"
 	"github.com/SentinelXofficial/sxel/pkg/payload"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -250,7 +249,7 @@ func CheckSecurityHeaders(client *http.Client, cfg *core.Config, targetURL strin
 	if err != nil {
 		return results
 	}
-	io.ReadAll(resp.Body) //nolint:errcheck
+	core.ReadBody(resp.Body)
 	resp.Body.Close()
 
 	type check struct {
@@ -352,7 +351,7 @@ func CheckCORS(client *http.Client, cfg *core.Config, targetURL string) []core.S
 		if err != nil {
 			continue
 		}
-		io.ReadAll(resp.Body) //nolint:errcheck
+		core.ReadBody(resp.Body)
 		resp.Body.Close()
 
 		acao := resp.Header.Get("Access-Control-Allow-Origin")
@@ -392,7 +391,7 @@ func CheckCORS(client *http.Client, cfg *core.Config, targetURL string) []core.S
 		preflightReq.Header.Set("Access-Control-Request-Headers", "X-Custom-Auth")
 		preResp, pErr := client.Do(preflightReq)
 		if pErr == nil {
-			io.ReadAll(preResp.Body) //nolint:errcheck
+			core.ReadBody(preResp.Body)
 			preResp.Body.Close()
 			if preResp.StatusCode >= 200 && preResp.StatusCode < 400 {
 				allowOrigin := preResp.Header.Get("Access-Control-Allow-Origin")
@@ -433,7 +432,7 @@ func CheckCORS(client *http.Client, cfg *core.Config, targetURL string) []core.S
 		privResp, prErr := client.Do(privReq)
 		if prErr == nil {
 			allowPrivate := privResp.Header.Get("Access-Control-Allow-Private-Network")
-			io.ReadAll(privResp.Body) //nolint:errcheck
+			core.ReadBody(privResp.Body)
 			privResp.Body.Close()
 			if allowPrivate == "true" {
 				results = append(results, core.ScanResult{
@@ -455,7 +454,7 @@ func CheckCORS(client *http.Client, cfg *core.Config, targetURL string) []core.S
 // CheckHTTPMethods tests which HTTP methods the server accepts
 func CheckHTTPMethods(client *http.Client, cfg *core.Config, targetURL string) []core.ScanResult {
 	var results []core.ScanResult
-	for _, method := range []string{"PUT", "DELETE", "PATCH", "TRACE", "OPTIONS", "CONNECT"} {
+	for _, method := range []string{"PUT", "DELETE", "PATCH", "TRACE", "CONNECT"} {
 		req, err := http.NewRequest(method, targetURL, nil)
 		if err != nil {
 			continue
@@ -465,7 +464,7 @@ func CheckHTTPMethods(client *http.Client, cfg *core.Config, targetURL string) [
 		if err != nil {
 			continue
 		}
-		io.ReadAll(resp.Body) //nolint:errcheck
+		core.ReadBody(resp.Body)
 		resp.Body.Close()
 
 		// Only flag as "allowed" on success or redirect; 4xx means blocked/unauthorised
@@ -557,7 +556,7 @@ func ScanCRLFInjection(client *http.Client, cfg *core.Config, target core.CrawlR
 			if err != nil {
 				continue
 			}
-			io.ReadAll(resp.Body) //nolint:errcheck
+			core.ReadBody(resp.Body)
 			resp.Body.Close()
 
 			if resp.Header.Get("X-Injected") != "" {

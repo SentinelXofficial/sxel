@@ -101,6 +101,9 @@ type Config struct {
 	// Template engine
 	Templates   bool   // --templates : run YAML-based template scans
 	TemplateDir string // --template-dir : path to templates directory
+
+	// OOB callback address (populated when OOB server is active)
+	OOBAddress string // used by template runner for {{interactsh-url}} substitution
 }
 
 type ScanResult struct {

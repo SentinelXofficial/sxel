@@ -71,8 +71,8 @@ func FetchFormBaseline(client *http.Client, cfg *core.Config, form core.Form) co
 			Status:  status,
 		}
 	}
-	// GET form: submit with default values via query string
-	u, _ := core.SetParam(form.Action, "", "1")
+	// GET form: submit with all default values via query string
+	u, _ := core.SetFormParams(form.Action, core.FormDefaults(form))
 	body, status, err := core.DoGET(client, cfg, u)
 	if err != nil {
 		return core.BaselineResult{}

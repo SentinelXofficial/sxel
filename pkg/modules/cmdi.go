@@ -165,7 +165,9 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 					d.Set(inp.Name, pl.Payload)
 					body, status, err = core.DoPOST(client, cfg, form.Action, d)
 				} else {
-					u, _ := core.SetParam(form.Action, inp.Name, pl.Payload)
+					d := core.FormDefaults(form)
+					d.Set(inp.Name, pl.Payload)
+					u, _ := core.SetFormParams(form.Action, d)
 					body, status, err = core.DoGET(client, cfg, u)
 				}
 				if err != nil {
@@ -206,7 +208,9 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 						d.Set(inp.Name, pl.Payload)
 						_, status, err = core.DoPOST(client, cfg, form.Action, d)
 					} else {
-						u, _ := core.SetParam(form.Action, inp.Name, pl.Payload)
+						d := core.FormDefaults(form)
+						d.Set(inp.Name, pl.Payload)
+						u, _ := core.SetFormParams(form.Action, d)
 						_, status, err = core.DoGET(client, cfg, u)
 					}
 					elapsed := time.Since(t0)

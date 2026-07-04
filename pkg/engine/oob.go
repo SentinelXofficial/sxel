@@ -3,7 +3,6 @@ package engine
 import (
 	"crypto/rand"
 	"fmt"
-	"io"
 	"math/big"
 	"net"
 	"net/http"
@@ -49,13 +48,24 @@ type OOBProbe struct {
 
 // NewOOBServer creates an OOB callback server on a random available port.
 func NewOOBServer() (*OOBServer, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	if err != nil {
 		return nil, err
 	}
+	// Try to detect a non-loopback address for the callback URL.
+	// If the machine has a public/private interface, use that instead of 0.0.0.0
+	// so the target can actually reach the scanner.
+	callbackAddr := fmt.Sprintf("0.0.0.0:%d", listener.Addr().(*net.TCPAddr).Port)
+	addrs, _ := net.InterfaceAddrs()
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+			callbackAddr = fmt.Sprintf("%s:%d", ipnet.IP.String(), listener.Addr().(*net.TCPAddr).Port)
+			break
+		}
+	}
 	oob := &OOBServer{
 		Port:      listener.Addr().(*net.TCPAddr).Port,
-		Address:   fmt.Sprintf("127.0.0.1:%d", listener.Addr().(*net.TCPAddr).Port),
+		Address:   callbackAddr,
 		Callbacks: make(map[string]*OOBCallback),
 		listener:  listener,
 	}
@@ -78,7 +88,7 @@ func NewOOBServer() (*OOBServer, error) {
 func (o *OOBServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/")
 
-	body, _ := io.ReadAll(r.Body)
+	body := core.ReadBody(r.Body)
 	r.Body.Close()
 
 	headers := make(map[string]string)
@@ -175,26 +185,24 @@ func RunOOBProbes(client *http.Client, cfg *core.Config, targetURL string, oob *
 
 	for _, probe := range probes {
 		id, oobURL := oob.RegisterProbe(probe.Type, targetURL, probe.Payload)
+		// Substitute placeholder in both Payload and URLPart
 		payload := strings.ReplaceAll(probe.Payload, "{{OOB_URL}}", oobURL)
+		urlPart := strings.ReplaceAll(probe.URLPart, "{{OOB_URL}}", oobURL)
 
 		var req *http.Request
 		var err error
 
 		if probe.Type == "XXE" {
-			req, err = http.NewRequest("POST", targetURL+probe.URLPart, strings.NewReader(payload))
+			req, err = http.NewRequest("POST", targetURL+urlPart, strings.NewReader(payload))
 			if err != nil {
 				continue
 			}
 			req.Header.Set("Content-Type", "application/xml")
 		} else {
-			req, err = http.NewRequest("GET", targetURL+probe.URLPart, nil)
+			req, err = http.NewRequest("GET", targetURL+urlPart, nil)
 			if err != nil {
 				continue
 			}
-			// Inject payload into URL query
-			q := req.URL.Query()
-			q.Set("__sxel_oob", payload)
-			req.URL.RawQuery = q.Encode()
 		}
 
 		core.ApplyHeaders(req, cfg)

@@ -3,7 +3,6 @@ package modules
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -34,6 +33,8 @@ func ScanClutch(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 		if cfg.Threads > 0 && cfg.Threads < burstSize {
 			burstSize = cfg.Threads * 4
 		}
+
+		fmt.Printf("  [CLUTCH] ⚠ Sending %d concurrent submissions to %s — may create real data on target\n", burstSize, action)
 
 		// Build the baseline request body
 		data := core.FormDefaults(form)
@@ -66,11 +67,11 @@ func ScanClutch(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 					resultsCh <- burstResult{err: err}
 					return
 				}
-				body, _ := io.ReadAll(resp.Body)
+				body := core.ReadBody(resp.Body)
 				resp.Body.Close()
 				resultsCh <- burstResult{
 					status: resp.StatusCode,
-					body:   string(body),
+					body:   body,
 					len:    len(body),
 				}
 			}()
