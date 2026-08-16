@@ -1,0 +1,22 @@
+name: poc-jboss-deserial
+transport: http
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/invoker/readonly"
+    expression: response.status == 500 || response.body.bcontains("jboss") || response.body.bcontains("jboss.invocation")
+  r1:
+    request:
+      method: POST
+      path: "/invoker/readonly"
+      headers:
+        Content-Type: "application/x-java-serialized-object"
+      body: "ACED0005"
+    expression: response.status == 500 || response.body.bcontains("jboss")
+expression: r0() || r1()
+detail:
+  author: sxel
+  description: JBoss invoker readonly deserialization probe (detection-only)
+  severity: high
+  tags: jboss,java,rce,deserial

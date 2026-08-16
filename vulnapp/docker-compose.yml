@@ -1,0 +1,29 @@
+services:
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: vulnapp
+      MARIADB_USER: vulnapp
+      MARIADB_PASSWORD: vulnapp
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build: .
+    ports:
+      - "8899:80"
+    environment:
+      VULNAPP_DB_HOST: db
+      VULNAPP_DB_PORT: "3306"
+      VULNAPP_DB_USER: vulnapp
+      VULNAPP_DB_PASS: vulnapp
+      VULNAPP_DB_NAME: vulnapp
+    depends_on:
+      db:
+        condition: service_healthy

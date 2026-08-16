@@ -1,0 +1,19 @@
+name: poc-tomcat-manager
+transport: http
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/manager/html"
+    expression: response.status == 401 && (response.body.bcontains("tomcat") || response.body.bcontains("Manager"))
+  r1:
+    request:
+      method: GET
+      path: "/manager/status"
+    expression: response.status == 401 || response.status == 200
+expression: r0() && r1()
+detail:
+  author: sxel
+  description: Apache Tomcat Manager default/exposed status probe
+  severity: medium
+  tags: tomcat,java,manager

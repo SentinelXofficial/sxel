@@ -1,0 +1,11 @@
+sxel
+sxel-*
+sxel_checkpoint
+sxvwb
+BUGS_REPORT.md
+sx.sxel.yaml
+sx.config.yaml
+sx.modules.yaml
+sx.plugins.yaml
+templates.bak/
+templates/

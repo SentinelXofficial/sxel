@@ -1,0 +1,25 @@
+name: poc-shiro-rememberme
+transport: http
+set:
+  r0: randomLowercase(8)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/"
+      headers:
+        Cookie: "rememberMe=deleteMe"
+    expression: response.status == 200 && (response.body.bcontains("rememberMe") || response.headers["Set-Cookie"].contains("rememberMe=deleteMe") || response.body.bcontains("__remember_me"))
+  r1:
+    request:
+      method: GET
+      path: "/login"
+      headers:
+        Cookie: "rememberMe=invalid"
+    expression: response.status == 200 && response.headers["Set-Cookie"].contains("rememberMe=deleteMe")
+expression: r0() || r1()
+detail:
+  author: sxel
+  description: Apache Shiro rememberMe cookie present (framework detection; vulnerable if key default)
+  severity: medium
+  tags: shiro,java,framework
