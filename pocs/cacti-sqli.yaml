@@ -1,0 +1,16 @@
+name: poc-cacti-sqli
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/remote_agent.php?action=polldata&local_data_ids[0]={{r0}}&host_id=1&poller_id=1&remote=1"
+    expression: response.status == 200 && (response.body.bcontains("local_data_id") || response.body.bcontains("SQLSTATE") || response.body.bcontains("syntax error"))
+expression: r0()
+detail:
+  author: sxel
+  description: Cacti poller SQL injection probe (CVE-2022-46169, pre-auth remote_agent.php)
+  severity: critical
+  tags: cacti,php,rce,sqli

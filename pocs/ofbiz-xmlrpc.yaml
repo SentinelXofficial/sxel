@@ -1,0 +1,17 @@
+name: poc-ofbiz-xmlrpc
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/webtools/control/xmlrpc"
+      body: '<?xml version="1.0"?><methodCall><methodName>System.listMethods</methodName><params></params></methodCall>'
+    expression: response.status == 200 && response.body.bcontains("listMethods")
+expression: r0()
+detail:
+  author: sxel
+  description: Apache OFBiz unauthenticated XML-RPC access probe (CVE-2023-49070, pre-auth bypass to RCE)
+  severity: high
+  tags: ofbiz,apache,java,rce,xmlrpc

