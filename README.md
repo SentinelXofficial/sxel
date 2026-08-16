@@ -9,6 +9,13 @@ Open-source. No keys. No restrictions. Written in Go.
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Release](https://img.shields.io/badge/release-v1.2.0-green)](https://github.com/SentinelXofficial/sxel/releases)
 
+## Disclaimer
+
+sxel is intended for **authorized security testing only** — use it solely on systems you
+own or have explicit written permission to test. The authors assume no liability for any
+misuse, illegal activity, or damage caused by this tool. You are responsible for complying
+with all applicable laws and regulations in your jurisdiction.
+
 ## Features
 
 - **40+ scan modules** — injection, XSS, SSRF/XXE, JWT, GraphQL, smuggling, IDOR, upload, and more
