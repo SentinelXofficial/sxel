@@ -212,6 +212,45 @@ moves:
 - `flip: true` — negative matching (header NOT present)
 - `head:` — custom request headers
 
+## PoC Library (gamma)
+
+Ready-to-run detection probes for known CVE/RCE chains, in the `pocs/` directory:
+
+```bash
+# Run everything
+sxel -u https://target.com --poc '*'
+
+# Run specific PoCs
+sxel -u https://target.com --poc log4j2,shiro,spring4shell
+
+# Severity filter: 1 = all, 2 = medium+, 3 = critical/high only
+sxel -u https://target.com --poc '*' --poc-level 3
+
+# Tag filter (rce, java, php, oob, ...)
+sxel -u https://target.com --poc '*' --poc-tags rce,java
+
+# Custom directory
+sxel -u https://target.com --poc '*' --poc-dir ./my-pocs/
+```
+
+| PoC | Severity | Tags |
+|-----|----------|------|
+| drupal-drupalgeddon | critical | drupal, php, rce |
+| jenkins | critical | jenkins, rce, devops |
+| laravel-debug | critical | laravel, php, rce |
+| log4j2 | critical | log4j, java, rce, oob |
+| phpunit-rce | critical | phpunit, php, rce |
+| spring4shell | critical | spring, java, rce |
+| struts2-s2-045 | critical | struts, java, rce |
+| thinkphp-rce | critical | thinkphp, php, rce |
+| weblogic | critical | weblogic, java, rce, xmldecoder |
+| django-debug | high | django, python, debug, rce |
+| fastjson | high | fastjson, java, rce |
+| jboss | high | jboss, java, rce, deserial |
+| shiro | medium | shiro, java, framework |
+| tomcat-manager | medium | tomcat, java, manager |
+| xstream | medium | xstream, java, deserialization |
+
 ## Example Output
 
 ```
