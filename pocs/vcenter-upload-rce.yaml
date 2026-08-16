@@ -1,0 +1,16 @@
+name: poc-vcenter-upload-rce
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: GET
+      path: "/ui/vropspluginui/rest/services/uploadova"
+    expression: response.status == 405 || response.status == 200
+expression: r0()
+detail:
+  author: sxel
+  description: VMware vCenter Server unauth file upload endpoint probe (CVE-2021-21972, pre-auth RCE on affected versions)
+  severity: high
+  tags: vcenter,vmware,rce,upload

