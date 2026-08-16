@@ -138,7 +138,7 @@ moves:
 - `flip: true` — negative matching (header NOT present)
 - `head:` — custom request headers
 
-## Sprint B Engines (v1.0.4)
+## Sprint B Engines
 
 | Flag | Engine | Description |
 |------|--------|-------------|
@@ -152,7 +152,7 @@ moves:
 ## Output
 
 ```
-[INFO] 2026-07-01 22:00:00 sxel v1.0.4 started
+[INFO] 2026-07-01 22:00:00 sxel v1.2.0 started
 [INFO] 2026-07-01 22:00:00 Loaded 38 scan module(s)
 [INFO] 2026-07-01 22:00:00 Target: https://target.com
 
@@ -165,6 +165,37 @@ moves:
 
 [+] 2026-07-01 22:01:30 Scan complete in 1m30s — 42 URLs, 5 forms, 3 findings
 [+] 2026-07-01 22:01:30 HTML report -> report.html
+```
+
+## Local Testing Lab (VulnApp)
+
+`sxel` ships with **VulnApp** — a deliberately vulnerable PHP + MariaDB shop (DVWA-style)
+used by the integration tests to validate detection quality. Run it locally and scan it:
+
+```bash
+# Docker
+cd vulnapp && docker compose up --build        # http://127.0.0.1:8899
+
+# or native (Debian/Ubuntu)
+sudo ./vulnapp/scripts/native-setup.sh
+./vulnapp/scripts/run-native.sh                 # http://127.0.0.1:8899
+```
+
+Then scan it:
+
+```bash
+./sxel -u http://127.0.0.1:8899 --crawl
+```
+
+Expected findings: SQLi (error/union/boolean/time), reflected + stored XSS, command
+injection, JWT (alg none), path traversal, open redirect, IDOR, CSRF, upload — see
+[`vulnapp/README.md`](vulnapp/README.md) for the full endpoint map and demo credentials.
+
+The integration suite boots VulnApp (php -S + local MariaDB) and scans it with the real
+modules. Tests auto-skip if PHP or MariaDB is not installed:
+
+```bash
+go test ./tests/integration/
 ```
 
 ## Contributing
