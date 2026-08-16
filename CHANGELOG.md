@@ -2,6 +2,35 @@
 
 All notable changes to sxel will be documented in this file.
 
+## [1.2.0] — Major Update: Accuracy + VulnApp Lab (2026-08-16)
+
+### Scanner accuracy — false-positive fixes
+- **XSS**: entity-encoded reflection in inert (non-executable) contexts no longer
+  triggers LOW "Reflected input"; genuine attribute-context breakout is still detected
+- **SSRF**: probe markers that are substrings of the probe URL itself no longer match
+  when the server simply echoes parameters (previously CRITICAL false positives)
+
+### VulnApp — local testing lab (new)
+- Deliberately vulnerable PHP 8 + MariaDB shop (DVWA-style) for realistic scanning practice
+- Vulnerabilities: SQLi (error/union/boolean/time), reflected + stored XSS, blind command
+  injection, JWT (weak secret + alg none), LFI, SSRF, open redirect, IDOR, CSRF,
+  unrestricted file upload, sensitive-file demo, admin panel
+- Packaging: Docker Compose (web + mariadb:11, healthcheck, auto-seed) or native apt setup
+- Seeded demo data (users, products, posts, comments) — credentials: admin/admin, alice/alice123
+
+### Integration testing overhaul
+- Test harness now boots the real lab: `php -S` + local MariaDB with automatic DB seed;
+  tests auto-skip when PHP/MariaDB are not installed
+- 17 integration tests, including 9 live scans against VulnApp covering SQLi
+  (error/union/boolean/time), XSS, command injection, JWT, LFI, and open redirect
+
+### CI
+- Integration step in GitHub Actions: `mariadb:11` service container +
+  `shivammathur/setup-php` for the integration suite
+
+### Docs
+- README: new VulnApp lab section; version refresh
+
 ## [1.0.0] — Initial Release
 
 ### Core Scanner (36 attack modules)
