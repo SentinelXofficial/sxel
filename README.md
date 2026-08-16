@@ -1,29 +1,50 @@
-# sxel — High-Performance Web Vulnerability Scanner
+# sxel
 
-Open-source. No keys. No restrictions. 40+ modules + template engine written in Go.
+High-Performance Web Vulnerability Scanner — 40+ attack modules, YAML template engine,
+and a deliberately vulnerable local lab for testing detection quality.
+
+Open-source. No keys. No restrictions. Written in Go.
+
+[![Go](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](go.mod)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Release](https://img.shields.io/badge/release-v1.2.0-green)](https://github.com/SentinelXofficial/sxel/releases)
+
+## Features
+
+- **40+ scan modules** — injection, XSS, SSRF/XXE, JWT, GraphQL, smuggling, IDOR, upload, and more
+- **Template engine** — Nuclei-compatible YAML schema, 110+ built-in templates
+- **Adaptive engines** — Strobe (deep-dive pipeline), Snipe (single-endpoint), Clutch (race conditions), Breach (OAuth/SAML)
+- **Blind detection** — time-based and boolean-based SQLi, OOB callbacks for SSRF/XXE/CMDi
+- **WAF detection + auto-bypass**
+- **Built-in lab (VulnApp)** — PHP + MariaDB deliberately vulnerable app for local practice and integration tests
+- **Rich output** — HTML, JSON, CSV, Markdown, SARIF, terminal
 
 ## Installation
 
-**Go install:**
-```bash
-go install github.com/SentinelXofficial/sxel/cmd/sxel@latest
-```
+### Binary (fastest)
 
-**Binary download:**
 ```bash
 curl -LO https://github.com/SentinelXofficial/sxel/releases/latest/download/sxel-linux-amd64
 chmod +x sxel-linux-amd64
 sudo mv sxel-linux-amd64 /usr/local/bin/sxel
 ```
 
-**Build from source:**
+### Go install
+
+```bash
+go install github.com/SentinelXofficial/sxel/cmd/sxel@latest
+```
+
+### From source
+
 ```bash
 git clone https://github.com/SentinelXofficial/sxel.git
 cd sxel
 go build -o sxel ./cmd/sxel/
 ```
 
-**Update:**
+### Update
+
 ```bash
 sxel --update
 ```
@@ -31,15 +52,80 @@ sxel --update
 ## Quick Start
 
 ```bash
+# Full scan: crawl + every module
 sxel -u https://target.com --all --crawl
+
+# Adaptive deep-dive
 sxel -u https://target.com --strobe
+
+# Deep-dive a single endpoint
 sxel -u https://target.com/api/user/1 --snipe
+
+# Template-based scan
 sxel -u https://target.com --templates
 ```
 
-## Features
+## Usage
 
-### Scan Modules (40+)
+### Scan targeting
+
+```bash
+# Single URL
+sxel -u "http://target.com/page?id=1"
+
+# Multi-target from file
+sxel -l targets.txt --all --json-output results.json --list-concurrency 5
+
+# Crawl with scope control
+sxel -u https://target.com --crawl --out-of-scope cdn.target.com
+```
+
+### Authentication & headers
+
+```bash
+# Login form + session handling
+sxel -u https://target.com --auth-login https://target.com/login \
+     --auth-user alice --auth-pass secret
+
+# Custom headers / cookies
+sxel -u https://target.com -H "Authorization: Bearer xxx" --cookie "session=abc"
+```
+
+### Module selection
+
+```bash
+# Everything
+sxel -u https://target.com --all
+
+# Pick modules by name
+sxel -u https://target.com --modules sqli,xss,cmdi,ssrf,jwt
+
+# Common one-offs
+sxel -u https://target.com --graphql --idor --file-upload
+sxel -u https://target.com --clutch          # race conditions
+sxel -u https://target.com --dirscan         # directory brute force
+sxel -u https://target.com --jwt --cookie "token=ey..."
+```
+
+### Proxying & resuming
+
+```bash
+# Through Burp / proxy
+sxel -u https://target.com --proxy http://127.0.0.1:8080
+
+# Interrupted scan? Resume from checkpoint
+sxel -u https://target.com --resume --checkpoint state.json
+```
+
+### Reports
+
+```bash
+sxel -u https://target.com --all --html-output report.html --json-output report.json
+sxel -u https://target.com --sarif-output sarif.json   # GitHub code scanning compatible
+```
+
+## Scan Modules (40+)
+
 | Category       | Modules                                                                                   |
 |----------------|-------------------------------------------------------------------------------------------|
 | Injection      | SQLi (Error/Blind/Boolean), NoSQLi, Command Injection, SSTI, CRLF, Prototype Pollution    |
@@ -50,65 +136,46 @@ sxel -u https://target.com --templates
 | Files          | Sensitive File Exposure, File Upload, Deserialization, Backup/Config Leaks                |
 | Defense        | WAF Detection + Auto-Bypass, Security Headers, CORS, HTTP Methods                         |
 
-### Engines
-| Engine         | Description                                                               |
-|----------------|---------------------------------------------------------------------------|
-| Template       | YAML-based template runner — 110+ templates, Nuclei-compatible schema     |
-| Strobe         | Adaptive deep-dive: fingerprint → smart scan → chains → templates         |
-| Snipe          | All modules attack single endpoint simultaneously (3-phase deep-dive)     |
-| Chain          | Multi-step attacks: extract variables → inject → verify                   |
-| OOB Callback   | Blind vulnerability detection (SSRF, XXE, CMDI) via callback server       |
-| Fingerprint    | Tech stack detection + endpoint dedup + smart module selection            |
-| Clutch         | Race condition / TOCTOU detection via burst requests                      |
-| Breach         | OAuth 2.0 + SAML misconfiguration probe                                   |
+## Engines
 
-### Output
-| Format         | Flag                  |
-|----------------|-----------------------|
-| HTML           | `--html-output`       |
-| JSON           | `--json-output`       |
-| CSV            | `--csv-output`        |
-| Markdown       | `--md-output`         |
-| Terminal       | Xray-style structured |
+| Engine       | Description                                                              |
+|--------------|--------------------------------------------------------------------------|
+| Template     | YAML-based template runner — 110+ templates, Nuclei-compatible schema    |
+| Strobe       | Adaptive deep-dive: fingerprint → smart scan → chains → templates        |
+| Snipe        | All modules attack single endpoint simultaneously (3-phase deep-dive)    |
+| Chain        | Multi-step attacks: extract variables → inject → verify                  |
+| OOB Callback | Blind vulnerability detection (SSRF, XXE, CMDi) via callback server      |
+| Fingerprint  | Tech stack detection + endpoint dedup + smart module selection           |
+| Clutch       | Race condition / TOCTOU detection via burst requests                     |
+| Breach       | OAuth 2.0 + SAML misconfiguration probe                                  |
 
-## Usage
+## Local Testing Lab (VulnApp)
+
+`sxel` ships with **VulnApp** — a deliberately vulnerable PHP + MariaDB shop (DVWA-style),
+used by the integration tests to validate detection quality. Run it locally and scan it:
 
 ```bash
-# Full scan with everything
-sxel -u https://target.com --all --crawl
+# Docker
+cd vulnapp && docker compose up --build        # http://127.0.0.1:8899
 
-# Adaptive smart scan
-sxel -u https://target.com --strobe
+# or native (Debian/Ubuntu)
+sudo ./vulnapp/scripts/native-setup.sh
+./vulnapp/scripts/run-native.sh                 # http://127.0.0.1:8899
+```
 
-# Deep-dive single endpoint
-sxel -u https://target.com/api/user/1 --snipe
+```bash
+./sxel -u http://127.0.0.1:8899 --crawl
+```
 
-# Template-based scanning
-sxel -u https://target.com --templates --template-dir ./templates/
+Expected findings: SQLi (error/union/boolean/time), reflected + stored XSS, command
+injection, JWT (alg none), path traversal, open redirect, IDOR, CSRF, upload — see
+[`vulnapp/README.md`](vulnapp/README.md) for the full endpoint map and demo credentials.
 
-# Race condition detection
-sxel -u https://target.com --clutch
+The integration suite boots VulnApp (php -S + local MariaDB) and scans it with the real
+modules. Tests auto-skip if PHP or MariaDB is not installed:
 
-# Multi-target from file
-sxel -l targets.txt --all --json-output results.json --list-concurrency 5
-
-# Crawl with custom depth + WAF bypass
-sxel -u https://target.com --crawl --depth 3 --waf-bypass
-
-# Auth + custom headers
-sxel -u https://target.com -H "Authorization: Bearer xxx" --cookie "session=abc"
-
-# Specific modules
-sxel -u https://target.com --sql-only --blind --proxy http://127.0.0.1:8080
-
-# Resume interrupted scan
-sxel -u https://target.com --resume --checkpoint state.json
-
-# Sprint B engines
-sxel -u https://target.com --strobe --snipe --clutch --breach --grpc
-
-# Help
-sxel --help
+```bash
+go test ./tests/integration/
 ```
 
 ## Templates
@@ -138,18 +205,7 @@ moves:
 - `flip: true` — negative matching (header NOT present)
 - `head:` — custom request headers
 
-## Sprint B Engines
-
-| Flag | Engine | Description |
-|------|--------|-------------|
-| `--templates` | Template Runner | YAML template scanning (110+ templates) |
-| `--strobe` | Strobe | Adaptive fingerprint → scan → chains → templates |
-| `--snipe` | Snipe | All modules deep-dive single endpoint |
-| `--clutch` | Clutch | Race condition / TOCTOU detection |
-| `--breach` | Breach | OAuth + SAML misconfiguration |
-| `--grpc` | gRPC | gRPC reflection + REST gateway |
-
-## Output
+## Example Output
 
 ```
 [INFO] 2026-07-01 22:00:00 sxel v1.2.0 started
@@ -165,37 +221,6 @@ moves:
 
 [+] 2026-07-01 22:01:30 Scan complete in 1m30s — 42 URLs, 5 forms, 3 findings
 [+] 2026-07-01 22:01:30 HTML report -> report.html
-```
-
-## Local Testing Lab (VulnApp)
-
-`sxel` ships with **VulnApp** — a deliberately vulnerable PHP + MariaDB shop (DVWA-style)
-used by the integration tests to validate detection quality. Run it locally and scan it:
-
-```bash
-# Docker
-cd vulnapp && docker compose up --build        # http://127.0.0.1:8899
-
-# or native (Debian/Ubuntu)
-sudo ./vulnapp/scripts/native-setup.sh
-./vulnapp/scripts/run-native.sh                 # http://127.0.0.1:8899
-```
-
-Then scan it:
-
-```bash
-./sxel -u http://127.0.0.1:8899 --crawl
-```
-
-Expected findings: SQLi (error/union/boolean/time), reflected + stored XSS, command
-injection, JWT (alg none), path traversal, open redirect, IDOR, CSRF, upload — see
-[`vulnapp/README.md`](vulnapp/README.md) for the full endpoint map and demo credentials.
-
-The integration suite boots VulnApp (php -S + local MariaDB) and scans it with the real
-modules. Tests auto-skip if PHP or MariaDB is not installed:
-
-```bash
-go test ./tests/integration/
 ```
 
 ## Contributing
