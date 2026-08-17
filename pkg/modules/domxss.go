@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 
 	"github.com/SentinelXofficial/sxel/internal/output"
@@ -16,15 +17,10 @@ import (
 
 func domContextJS(token string) string {
 	t, _ := json.Marshal(token)
-	return `(()=>{const token=` + string(t) + `;const w=document.createTreeWalker(document,NodeFilter.SHOW_ALL);let n;let ctx="";while(n=w.nextNode()){if(n.nodeType===3){if(n.nodeValue.indexOf(token)>=0){const p=n.parentElement;if(p&&/^script$/i.test(p.tagName)){if(token.toLowerCase().indexOf("</script")>=0||token.toLowerCase().indexOf("</scr"+"ipt")>=0){return "script";}if(ctx!=="script"){ctx="text";}continue;}if(ctx!=="script"){ctx="text";}}}else if(n.nodeType===1){for(let i=0;i<n.attributes.length;i++){const a=n.attributes[i];if(a.value.indexOf(token)>=0){const nm=a.name.toLowerCase();if(nm.indexOf("on")===0||/^javascript:/i.test(a.value.trim())){return "event";}if(ctx!=="script"){ctx="attr";}}}}}return ctx;})()`
+	return `(()=>{const token=` + string(t) + `;const w=document.createTreeWalker(document,NodeFilter.SHOW_ALL);let n;let ctx="";while(n=w.nextNode()){if(n.nodeType===3){if(n.nodeValue.indexOf(token)>=0){const p=n.parentElement;if(p&&/^script$/i.test(p.tagName)){return "script";}if(ctx!=="script"){ctx="text";}}}else if(n.nodeType===1){for(let i=0;i<n.attributes.length;i++){const a=n.attributes[i];if(a.value.indexOf(token)>=0){const nm=a.name.toLowerCase();if(nm.indexOf("on")===0||/^javascript:/i.test(a.value.trim())){return "event";}if(ctx!=="script"){ctx="attr";}}}}}return ctx;})()`
 }
 
-func probeDOMContext(actx context.Context, pageURL, payload string) string {
-	tctx, tcancel := context.WithTimeout(actx, 25*time.Second)
-	defer tcancel()
-	bctx, bcancel := chromedp.NewContext(tctx)
-	defer bcancel()
-
+func probeDOMContext(bctx context.Context, pageURL, payload string) string {
 	var out string
 	err := chromedp.Run(bctx,
 		chromedp.Navigate(pageURL),
@@ -52,13 +48,24 @@ func ScanDOMXSS(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 	}
 	actx, acancel := core.NewDOMAllocator(chrome)
 	defer acancel()
+	tctx, tcancel := context.WithTimeout(actx, 3*time.Minute)
+	defer tcancel()
+	bctx, bcancel := chromedp.NewContext(tctx)
+	defer bcancel()
+	chromedp.ListenTarget(bctx, func(ev interface{}) {
+		if _, ok := ev.(*page.EventJavascriptDialogOpening); ok {
+			go func() {
+				_ = chromedp.Run(bctx, page.HandleJavaScriptDialog(false))
+			}()
+		}
+	})
 	probe := func(rawURL, param string) {
 		for _, payload := range payloads {
 			u, err := core.SetParam(rawURL, param, payload)
 			if err != nil {
 				continue
 			}
-			ctx := probeDOMContext(actx, u, payload)
+			ctx := probeDOMContext(bctx, u, payload)
 			switch ctx {
 			case "script", "event":
 				results = append(results, core.ScanResult{

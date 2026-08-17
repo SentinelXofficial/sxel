@@ -24,6 +24,9 @@ const (
 
 func ChromePath() string {
 	if p := os.Getenv("SXEL_CHROME"); p != "" {
+		if strings.EqualFold(p, "none") || strings.EqualFold(p, "off") {
+			return ""
+		}
 		return p
 	}
 	for _, c := range []string{"google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "headless_shell", "msedge"} {
@@ -165,13 +168,15 @@ func readCachedChromeVersion(cache string) string {
 	return strings.TrimSpace(string(data))
 }
 
+var fetchChromeVersionFn = fetchChromeVersion
+
 func ensureChromeOnce() string {
 	if p := ChromePath(); p != "" {
 		return p
 	}
 	cache := chromeCacheDir()
 	bin := filepath.Join(cache, "headless_shell")
-	version, err := fetchChromeVersion()
+	version, err := fetchChromeVersionFn()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[!] js-crawl: could not fetch Chrome version: %v\n", err)
 		if _, serr := os.Stat(bin); serr == nil {

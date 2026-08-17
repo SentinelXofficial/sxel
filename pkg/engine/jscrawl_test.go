@@ -11,6 +11,9 @@ import (
 )
 
 func TestJSRenderWithoutChrome(t *testing.T) {
+	if core.ChromePath() != "" {
+		t.Skip("chrome available — test only meaningful without chrome")
+	}
 	cfg := &core.Config{UserAgent: "sxel-test"}
 	c := NewCrawler(http.DefaultClient, cfg)
 	links, forms := c.jsRender("http://example.invalid/")
@@ -30,9 +33,9 @@ func TestJSRenderDiscoversJSGeneratedContent(t *testing.T) {
 			return
 		}
 		io.WriteString(w, `<html><head></head><body>
+			<div id="app"></div>
 			<script>document.write('<a href="/js-only">js link</a>');</script>
 			<script>document.getElementById("app").innerHTML='<form action="/js-form"><input name="q"></form>';</script>
-			<div id="app"></div>
 		</body></html>`)
 	}))
 	defer srv.Close()

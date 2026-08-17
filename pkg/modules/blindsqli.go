@@ -414,7 +414,7 @@ func hasRateLimitOrError(body string) bool {
 		"rate limit exceeded", "too many request", "access denied",
 		"temporarily blocked", "captcha required", "service unavailable",
 		"request blocked by firewall", "mod_security",
-		"too many attempts", "too many login", "retry after", "try again later",
+		"too many attempts", "too many login", "retry after",
 	}
 	for _, ind := range indicators {
 		if strings.Contains(low, ind) {

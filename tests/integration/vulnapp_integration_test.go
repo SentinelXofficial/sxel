@@ -143,10 +143,17 @@ func seedDB(rootArgs []string) {
 	repoRoot, _ := filepath.Abs(filepath.Join("..", ".."))
 	for _, f := range []string{"schema.sql", "seed.sql"} {
 		path := filepath.Join(repoRoot, "vulnapp", "db", f)
-		cmd := exec.Command("mysql", append(rootArgs, path)...)
+		cmd := exec.Command("mysql", rootArgs...)
+		in, err := os.Open(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "integration: open %s: %v\n", f, err)
+			continue
+		}
+		cmd.Stdin = in
 		if out, err := cmd.CombinedOutput(); err != nil {
 			fmt.Fprintf(os.Stderr, "integration: seed %s: %v\n%s\n", f, err, out)
 		}
+		in.Close()
 	}
 	grant := `CREATE USER IF NOT EXISTS 'vulnapp'@'%' IDENTIFIED BY 'vulnapp';
 CREATE USER IF NOT EXISTS 'vulnapp'@'127.0.0.1' IDENTIFIED BY 'vulnapp';
@@ -197,7 +204,7 @@ func TestVulnAppSQLiUnion(t *testing.T) {
 
 func TestVulnAppSQLiBooleanBlind(t *testing.T) {
 	requireVulnApp(t)
-	res := runScan(t, nil, modules.ScanBooleanBlindSQLi, vulnTarget("/product?id=1"))
+	res := runScan(t, nil, modules.ScanBooleanBlindSQLi, vulnTarget("/product?id=999999"))
 	assertHasType(t, res, "SQL Injection Boolean-Based Blind")
 }
 
