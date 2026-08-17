@@ -2,11 +2,27 @@ package modules
 
 import (
 	"fmt"
+	"html"
+	"net/http"
+	"regexp"
+	"strings"
+
 	"github.com/SentinelXofficial/sxel/pkg/core"
 	"github.com/SentinelXofficial/sxel/pkg/payload"
-	"net/http"
-	"strings"
 )
+
+var valueAttrRe = regexp.MustCompile(`(?i)\bvalue\s*=\s*"[^"]*"|\bvalue\s*=\s*'[^']*'`)
+
+func normalizeSQLiBody(body string, markers []string) string {
+	out := valueAttrRe.ReplaceAllString(body, `value=""`)
+	out = html.UnescapeString(out)
+	for _, m := range markers {
+		if m != "" {
+			out = strings.ReplaceAll(out, m, "")
+		}
+	}
+	return out
+}
 
 func DetectSQLi(body string) string {
 	low := strings.ToLower(body)

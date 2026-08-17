@@ -322,6 +322,26 @@ func (c *Crawler) fetchPage(pageURL string) ([]string, []core.Form, error) {
 		links = append(links, jl...)
 		forms = append(forms, jf...)
 	}
+
+	finalURL := pageURL
+	if resp.Request != nil && resp.Request.URL != nil {
+		finalURL = resp.Request.URL.String()
+	}
+	if !c.IsInScope(finalURL) {
+		if c.cfg.Verbose {
+			output.Verbose("[crawl] %s redirected out of scope (%s) — dropping links/forms", pageURL, finalURL)
+		}
+		links = nil
+		forms = nil
+	} else {
+		keep := forms[:0]
+		for _, f := range forms {
+			if c.IsInScope(f.Action) {
+				keep = append(keep, f)
+			}
+		}
+		forms = keep
+	}
 	return links, forms, nil
 }
 

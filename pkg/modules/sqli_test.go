@@ -2,14 +2,17 @@ package modules
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/SentinelXofficial/sxel/pkg/core"
+	"github.com/SentinelXofficial/sxel/pkg/engine"
 )
 
 func TestUnionPairSameLength(t *testing.T) {
@@ -135,6 +138,102 @@ func TestScanBooleanBlindSQLi(t *testing.T) {
 	findings = ScanBooleanBlindSQLi(static.Client(), cfg, core.CrawlResult{URL: static.URL + "/s?q=x"})
 	if len(findings) != 0 {
 		t.Errorf("static page must not produce boolean findings, got %v", findings)
+	}
+}
+
+func laravelStyleFormServer(t *testing.T) *httptest.Server {
+	var mu sync.Mutex
+	cycle := 0
+	msgs := []string{
+		"These credentials do not match our records.",
+		"The email field must be a valid email address.",
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if r.Method == http.MethodPost {
+			cycle++
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		email := r.URL.Query().Get("old")
+		w.Write([]byte(`<html><body><form method="POST" action="/login">` +
+			`<input type="hidden" name="_token" value="tok1">` +
+			`<input type="email" name="email" value="` + html.EscapeString(email) + `">` +
+			`<input type="password" name="password">` +
+			`<input type="checkbox" name="remember" value="1">` +
+			`</form><div class="err" style="color:#ef4444">` + msgs[cycle%len(msgs)] + `</div></body></html>`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestLaravelStyleFormNoSQLiFalsePositive(t *testing.T) {
+	srv := laravelStyleFormServer(t)
+	cfg := &core.Config{Threads: 2, UserAgent: "sxel-test"}
+	client := core.NewHTTPClient(cfg)
+	form := core.Form{
+		Method: "POST", Action: srv.URL + "/login",
+		TokenName: "_token", TokenValue: "tok1",
+		Inputs: []core.Input{
+			{Name: "email", Type: "email"},
+			{Name: "password", Type: "password"},
+			{Name: "remember", Type: "checkbox"},
+		},
+	}
+	target := core.CrawlResult{URL: srv.URL + "/login", Forms: []core.Form{form}}
+
+	if res := ScanUnionSQLi(client, cfg, target); len(res) != 0 {
+		t.Fatalf("laravel-style form must not produce union findings, got %v", res)
+	}
+	if res := ScanBooleanBlindSQLi(client, cfg, target); len(res) != 0 {
+		t.Fatalf("laravel-style form must not produce boolean findings, got %v", res)
+	}
+}
+
+func TestEncodedReflectionNoUnionFalsePositive(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("q")
+		enc := strings.ReplaceAll(html.EscapeString(q), " ", "&#32;")
+		fmt.Fprintf(w, "<html>you searched for <b>%s</b></html>", enc)
+	}))
+	defer srv.Close()
+
+	cfg := &core.Config{Threads: 2, UserAgent: "sxel-test"}
+	client := core.NewHTTPClient(cfg)
+	res := ScanUnionSQLi(client, cfg, core.CrawlResult{URL: srv.URL + "/r?q=x"})
+	if len(res) != 0 {
+		t.Fatalf("entity-encoded reflection must not produce union findings, got %v", res)
+	}
+}
+
+func TestScanUnionSQLiFormVulnerable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			email := r.FormValue("email")
+			if idx := strings.Index(email, "UNION SELECT "); idx >= 0 {
+				cols := strings.Split(strings.Split(email[idx+len("UNION SELECT "):], "--")[0], ",")
+				if len(cols) == 2 {
+					fmt.Fprintf(w, "<html><table><tr><td>%s</td><td>%s</td></tr></table></html>", cols[0], cols[1])
+					return
+				}
+			}
+			fmt.Fprintf(w, "<html>no results for %s</html>", email)
+			return
+		}
+		w.Write([]byte(`<html><form method="POST" action="/login"><input type="email" name="email"><input type="password" name="password"></form></html>`))
+	}))
+	defer srv.Close()
+
+	cfg := &core.Config{Threads: 2, UserAgent: "sxel-test"}
+	client := core.NewHTTPClient(cfg)
+	fs, err := engine.FetchForms(client, cfg, srv.URL+"/login")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := ScanUnionSQLi(client, cfg, core.CrawlResult{URL: srv.URL + "/login", Forms: fs})
+	if len(res) != 1 || !strings.Contains(res[0].Type, "2 columns") {
+		t.Fatalf("expected 2-column union via form, got %v", res)
 	}
 }
 

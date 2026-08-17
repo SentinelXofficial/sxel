@@ -1384,6 +1384,18 @@ func scanTarget(client *http.Client, cfg *core.Config, target string, useRobots 
 			if len(t.Forms) > 0 {
 				keep := make([]core.Form, 0, len(t.Forms))
 				for _, f := range t.Forms {
+					fa, err := url.Parse(f.Action)
+					if err != nil {
+						continue
+					}
+					if tu, err := url.Parse(t.URL); err == nil {
+						if !engine.SameSiteOrSubdomain(fa.Host, tu.Host) {
+							if cfg.Verbose {
+								output.Verbose("[skip] %s form action out of scope: %s", t.URL, f.Action)
+							}
+							continue
+						}
+					}
 					k := formKey(f)
 					testedFormMu.Lock()
 					if testedForms[k] {

@@ -3,6 +3,7 @@ package engine
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -156,5 +157,54 @@ func TestCrawlSkipsErrorsAndMaxPages(t *testing.T) {
 	}
 	if hit["/ok2"] != 0 || hit["/ok3"] != 0 {
 		t.Errorf("MaxPages budget should have skipped /ok2 and /ok3, hit map: %v", hit)
+	}
+}
+
+func TestCrawlSkipsOutOfScopeRedirectForms(t *testing.T) {
+	ext := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html><form method="POST" action="/login"><input type="email" name="email"><input type="password" name="password"></form></html>`))
+	}))
+	defer ext.Close()
+
+	extHost := strings.Replace(ext.URL, "127.0.0.1", "localhost", 1)
+	redir := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, extHost+"/login", http.StatusFound)
+	}))
+	defer redir.Close()
+
+	cfg := &core.Config{Threads: 2, UserAgent: "sxel-test"}
+	c := NewCrawler(redir.Client(), cfg)
+	results := c.Crawl(redir.URL + "/auth/github")
+
+	if len(results) == 0 {
+		t.Fatal("redirect endpoint should still be a crawl result")
+	}
+	for _, p := range results {
+		if p.URL == redir.URL+"/auth/github" && len(p.Forms) > 0 {
+			t.Fatalf("forms from out-of-scope redirect target must be dropped, got %+v", p.Forms)
+		}
+	}
+}
+
+func TestCrawlKeepsInScopeForms(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html><form method="POST" action="/submit"><input type="email" name="email"><input type="password" name="password"></form></html>`))
+	}))
+	defer srv.Close()
+
+	cfg := &core.Config{Threads: 2, UserAgent: "sxel-test"}
+	c := NewCrawler(srv.Client(), cfg)
+	results := c.Crawl(srv.URL + "/")
+
+	found := false
+	for _, p := range results {
+		for _, f := range p.Forms {
+			if f.Action == srv.URL+"/submit" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatal("in-scope form action should be kept")
 	}
 }

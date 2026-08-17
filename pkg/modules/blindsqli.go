@@ -268,20 +268,36 @@ func scanBooleanURL(client *http.Client, cfg *core.Config, targetURL, param stri
 		urlTrue, _ := core.SetParam(targetURL, param, pr.trueP)
 		urlFalse, _ := core.SetParam(targetURL, param, pr.falseP)
 		lastURL = urlTrue
-		bodyTrue, statusTrue, err := core.DoGET(client, cfg, urlTrue)
+		t1, st1, err := core.DoGET(client, cfg, urlTrue)
 		if err != nil {
 			continue
 		}
-		bodyFalse, statusFalse, err := core.DoGET(client, cfg, urlFalse)
+		t2, _, err := core.DoGET(client, cfg, urlTrue)
 		if err != nil {
 			continue
 		}
-		if hasRateLimitOrError(bodyTrue) || hasRateLimitOrError(bodyFalse) {
+		f1, sf1, err := core.DoGET(client, cfg, urlFalse)
+		if err != nil {
 			continue
 		}
-		diff := len(bodyTrue) - len(bodyFalse)
-		splits = append(splits, boolSplit{diff: diff, significant: diff > 100 || diff < -100 || statusTrue != statusFalse, falseLen: len(bodyFalse), falseStatus: statusFalse})
-		evidence = append(evidence, fmt.Sprintf("pair(%s | %s): %+d bytes, HTTP %d/%d", pr.trueP, pr.falseP, diff, statusTrue, statusFalse))
+		f2, _, err := core.DoGET(client, cfg, urlFalse)
+		if err != nil {
+			continue
+		}
+		if hasRateLimitOrError(t1) || hasRateLimitOrError(t2) || hasRateLimitOrError(f1) || hasRateLimitOrError(f2) {
+			continue
+		}
+		nt := normalizeSQLiBody(t1, nil)
+		if nt != normalizeSQLiBody(t2, nil) {
+			continue
+		}
+		nf := normalizeSQLiBody(f1, nil)
+		if nf != normalizeSQLiBody(f2, nil) {
+			continue
+		}
+		diff := len(nt) - len(nf)
+		splits = append(splits, boolSplit{diff: diff, significant: diff > 100 || diff < -100 || st1 != sf1, falseLen: len(f1), falseStatus: sf1})
+		evidence = append(evidence, fmt.Sprintf("pair(%s | %s): %+d bytes, HTTP %d/%d", pr.trueP, pr.falseP, diff, st1, sf1))
 	}
 	if consistentClassSplit(splits) && baselineFalseConfirmed(bl, splits) {
 		results = append(results, core.ScanResult{
@@ -305,41 +321,54 @@ func scanBooleanForm(client *http.Client, cfg *core.Config, form core.Form, inpu
 	var splits []boolSplit
 	var evidence []string
 	for _, pr := range booleanPairs() {
-		dTrue := core.FormDefaults(form)
-		dTrue.Set(input, pr.trueP)
-		dFalse := core.FormDefaults(form)
-		dFalse.Set(input, pr.falseP)
-
-		var bodyTrue, bodyFalse string
-		var statusTrue, statusFalse int
-		var err error
-		if form.Method == "POST" {
-			bodyTrue, statusTrue, err = core.DoPOST(client, cfg, form.Action, dTrue)
-			if err != nil {
-				continue
+		submit := func(payload string) (string, int, bool) {
+			d := core.FormDefaults(form)
+			d.Set(input, payload)
+			var body string
+			var status int
+			var err error
+			if form.Method == "POST" {
+				body, status, err = core.DoPOST(client, cfg, form.Action, d)
+			} else {
+				u, _ := core.SetFormParams(form.Action, d)
+				body, status, err = core.DoGET(client, cfg, u)
 			}
-			bodyFalse, statusFalse, err = core.DoPOST(client, cfg, form.Action, dFalse)
 			if err != nil {
-				continue
+				return "", 0, false
 			}
-		} else {
-			uTrue, _ := core.SetFormParams(form.Action, dTrue)
-			uFalse, _ := core.SetFormParams(form.Action, dFalse)
-			bodyTrue, statusTrue, err = core.DoGET(client, cfg, uTrue)
-			if err != nil {
-				continue
-			}
-			bodyFalse, statusFalse, err = core.DoGET(client, cfg, uFalse)
-			if err != nil {
-				continue
-			}
+			return body, status, true
 		}
-		if hasRateLimitOrError(bodyTrue) || hasRateLimitOrError(bodyFalse) {
+
+		t1, st1, ok := submit(pr.trueP)
+		if !ok {
 			continue
 		}
-		diff := len(bodyTrue) - len(bodyFalse)
-		splits = append(splits, boolSplit{diff: diff, significant: diff > 100 || diff < -100 || statusTrue != statusFalse, falseLen: len(bodyFalse), falseStatus: statusFalse})
-		evidence = append(evidence, fmt.Sprintf("pair(%s | %s): %+d bytes, HTTP %d/%d", pr.trueP, pr.falseP, diff, statusTrue, statusFalse))
+		t2, _, ok := submit(pr.trueP)
+		if !ok {
+			continue
+		}
+		f1, sf1, ok := submit(pr.falseP)
+		if !ok {
+			continue
+		}
+		f2, _, ok := submit(pr.falseP)
+		if !ok {
+			continue
+		}
+		if hasRateLimitOrError(t1) || hasRateLimitOrError(t2) || hasRateLimitOrError(f1) || hasRateLimitOrError(f2) {
+			continue
+		}
+		nt := normalizeSQLiBody(t1, nil)
+		if nt != normalizeSQLiBody(t2, nil) {
+			continue
+		}
+		nf := normalizeSQLiBody(f1, nil)
+		if nf != normalizeSQLiBody(f2, nil) {
+			continue
+		}
+		diff := len(nt) - len(nf)
+		splits = append(splits, boolSplit{diff: diff, significant: diff > 100 || diff < -100 || st1 != sf1, falseLen: len(f1), falseStatus: sf1})
+		evidence = append(evidence, fmt.Sprintf("pair(%s | %s): %+d bytes, HTTP %d/%d", pr.trueP, pr.falseP, diff, st1, sf1))
 	}
 	if consistentClassSplit(splits) && baselineFalseConfirmed(bl, splits) {
 		results = append(results, core.ScanResult{
@@ -385,6 +414,7 @@ func hasRateLimitOrError(body string) bool {
 		"rate limit exceeded", "too many request", "access denied",
 		"temporarily blocked", "captcha required", "service unavailable",
 		"request blocked by firewall", "mod_security",
+		"too many attempts", "too many login", "retry after", "try again later",
 	}
 	for _, ind := range indicators {
 		if strings.Contains(low, ind) {
