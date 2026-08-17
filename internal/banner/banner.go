@@ -20,32 +20,47 @@ func normVersion(s string) string {
 	return s
 }
 
-func Print() {
-	fmt.Println(`
+func Logo() string {
+	return `
    _____            __  _            __  _  __
   / ___/___  ____  / /_(_)___  ___  / / | |/ /
   \__ \/ _ \/ __ \/ __/ / __ \/ _ \/ /  |   /
  ___/ /  __/ / / / /_/ / / / /  __/ /___/   |
-/____/\___/_/ /_/\__/_/_/ /_/\___/_____/_/|_/`)
-	fmt.Println()
+/____/\___/_/ /_/\__/_/_/ /_/\___/_____/_/|_/`
+}
 
-	latest := fetchLatest()
-	versionLine := fmt.Sprintf("sxel — Web Vulnerability Scanner  %s", color.Red(version.Current))
-	if latest == "" {
-		versionLine += ""
-	} else if normVersion(latest) == normVersion(version.Current) {
-		versionLine += "  " + color.Green("(latest)")
-	} else {
-		versionLine += "  " + color.BoldYellow(fmt.Sprintf("(outdated — latest: %s)", latest))
+func Print() {
+	fmt.Println(Logo())
+	fmt.Println()
+	printVersionLine(fetchLatest())
+	output.Info("sxel %s started", version.Current)
+}
+
+func PrintVersion() {
+	fmt.Println(Logo())
+	fmt.Println()
+	printVersionLine(fetchLatest())
+}
+
+func printVersionLine(latest string) {
+	versionText := version.Current
+	statusText := ""
+	switch {
+	case latest == "":
+		statusText = "  " + color.Gray("(update status unknown)")
+	case normVersion(latest) == normVersion(version.Current):
+		versionText = color.Green(version.Current)
+		statusText = "  " + color.Green("(latest)")
+	default:
+		versionText = color.Red(version.Current)
+		statusText = "  " + color.BoldRed(fmt.Sprintf("(outdated — latest: %s)", latest))
 	}
-	fmt.Println("  " + versionLine)
+	fmt.Println("  " + fmt.Sprintf("sxel — Web Vulnerability Scanner  %s%s", versionText, statusText))
 	fmt.Println()
 
 	if latest != "" && normVersion(latest) != normVersion(version.Current) {
 		fmt.Printf("  Run: %s\n\n", color.Yellow("sxel --update"))
 	}
-
-	output.Info("sxel %s started", version.Current)
 }
 
 func fetchLatest() string {

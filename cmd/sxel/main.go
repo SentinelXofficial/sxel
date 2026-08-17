@@ -468,7 +468,7 @@ Examples:
 		return
 	}
 	if *versionFlag {
-		fmt.Println("sxel " + version.Current)
+		banner.PrintVersion()
 		return
 	}
 
