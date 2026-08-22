@@ -222,15 +222,12 @@ func runBurpGamma(args []string) {
 	written := 0
 	for i, it := range items.Items {
 		raw := parseBurpRequest(it.Request)
-		body := ""
-		if idx := strings.Index(raw, "\r\n\r\n"); idx >= 0 {
-			body = raw[idx+4:]
-		}
+		hdrs, body := splitBurpRequest(raw)
 		u, uerr := url.Parse(it.URL)
 		if uerr != nil {
 			continue
 		}
-		p := buildGammaFromParts(it.Method, u.Path+querySuffix(u), body)
+		p := buildGammaFromParts(it.Method, u.Path+querySuffix(u), body, hdrs)
 		name := fmt.Sprintf("poc-burp-%d", i+1)
 		p.Name = name
 		p.Detail = poc.Detail{Author: "burp-gamma", Severity: "info", Description: "converted from burp history " + it.URL}
@@ -253,10 +250,10 @@ func querySuffix(u *url.URL) string {
 	return ""
 }
 
-func buildGammaFromParts(method, path string, body string) *poc.PoC {
+func buildGammaFromParts(method, path string, body string, headers map[string]string) *poc.PoC {
 	rules := map[string]*poc.Rule{
 		"r0": {
-			Request:    poc.Request{Method: method, Path: path, Body: body},
+			Request:    poc.Request{Method: method, Path: path, Body: body, Headers: headers},
 			Expression: "response.status == 200",
 		},
 	}
@@ -265,6 +262,38 @@ func buildGammaFromParts(method, path string, body string) *poc.PoC {
 		Rules:      rules,
 		Expression: "r0()",
 	}
+}
+
+// splitBurpRequest separates a raw HTTP request into its headers (minus Host
+// and Content-Length, which are recomputed on replay) and body. Handles both
+// CRLF and LF line endings.
+func splitBurpRequest(raw string) (map[string]string, string) {
+	headers := map[string]string{}
+	var head, body string
+	if idx := strings.Index(raw, "\r\n\r\n"); idx >= 0 {
+		head, body = raw[:idx], raw[idx+4:]
+	} else if idx := strings.Index(raw, "\n\n"); idx >= 0 {
+		head, body = raw[:idx], raw[idx+2:]
+	} else {
+		return headers, strings.TrimSpace(raw)
+	}
+	lines := strings.Split(head, "\r\n")
+	if len(lines) == 1 {
+		lines = strings.Split(head, "\n")
+	}
+	for _, ln := range lines[1:] {
+		c := strings.Index(ln, ":")
+		if c <= 0 {
+			continue
+		}
+		k := strings.TrimSpace(ln[:c])
+		v := strings.TrimSpace(ln[c+1:])
+		if k == "" || strings.EqualFold(k, "Host") || strings.EqualFold(k, "Content-Length") {
+			continue
+		}
+		headers[k] = v
+	}
+	return headers, body
 }
 
 func parseBurpRequest(req string) string {
@@ -316,7 +345,7 @@ func runTransform(args []string) {
 	}
 	path = strings.ReplaceAll(path, "{{BaseURL}}", "")
 	path = strings.ReplaceAll(path, "{{RootURL}}", "")
-	p := buildGammaFromParts(method, path, req.Body)
+	p := buildGammaFromParts(method, path, req.Body, nil)
 	if n.Info.Name != "" {
 		p.Name = strings.ReplaceAll(n.Info.Name, " ", "-")
 	}

@@ -50,8 +50,11 @@ func bypassPathVariants(path string) []string {
 		"/" + p,
 		"/" + p + "/",
 		"//" + p,
-		"./" + p,
-		"..;/" + p,
+		// "./p" and "..;/p" must stay path segments — without a leading
+		// slash the dot binds to the authority (host "example.com.") and
+		// the probe silently targets a different host.
+		"/./" + p,
+		"/..;/" + p,
 		"/" + p + "/.",
 		"/" + p + ";",
 		"/" + p + ";/",

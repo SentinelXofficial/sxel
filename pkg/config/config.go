@@ -301,7 +301,47 @@ func Load(path string) (*File, error) {
 	if err := yaml.Unmarshal(data, &f); err != nil {
 		return nil, err
 	}
+	if err := f.Validate(); err != nil {
+		return nil, err
+	}
 	return &f, nil
+}
+
+// Validate rejects clearly invalid numeric values (negative concurrency,
+// delays or rate limits; non-positive timeouts) so a bad config file fails
+// fast instead of producing degenerate scan behavior.
+func (f *File) Validate() error {
+	bad := func(name string, v *int) error {
+		if v == nil {
+			return nil
+		}
+		switch name {
+		case "timeout":
+			if *v <= 0 {
+				return fmt.Errorf("config %s: timeout must be > 0 (got %d)", name, *v)
+			}
+		default:
+			if *v < 0 {
+				return fmt.Errorf("config %s: must be >= 0 (got %d)", name, *v)
+			}
+		}
+		return nil
+	}
+	for _, c := range []struct {
+		name string
+		v    *int
+	}{
+		{"threads", f.Threads},
+		{"timeout", f.Timeout},
+		{"delay", f.Delay},
+		{"rate-limit", f.RateLimit},
+		{"max-pages", f.MaxPages},
+	} {
+		if err := bad(c.name, c.v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func WriteTemplate(path string) error {

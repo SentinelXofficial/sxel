@@ -92,6 +92,9 @@ func (j *SessionJar) SetCookies(u *url.URL, cookies []*http.Cookie) {
 		}
 		key := cookieKey(c)
 		if c.Value == "" || cookieExpired(c) {
+			// Empty value is treated as a server-side deletion request
+			// (documented by TestSessionJarDelete); expired cookies are
+			// dropped per RFC 6265.
 			delete(m, key)
 			continue
 		}

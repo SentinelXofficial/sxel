@@ -64,7 +64,9 @@ func confirmed(cfg *core.Config, firstDelta, confirmDelta time.Duration, confirm
 	if confirmDelta >= needed {
 		return true
 	}
-	return confirmDelta >= 3*firstDelta/2
+	// Ratio fallback also requires an absolute floor so sustained server
+	// slowness (inflating firstDelta) cannot fabricate a confirmation.
+	return confirmDelta >= 3*firstDelta/2 && confirmDelta >= 750*time.Millisecond
 }
 
 func scanTimeURL(client *http.Client, cfg *core.Config, targetURL, param string) []core.ScanResult {

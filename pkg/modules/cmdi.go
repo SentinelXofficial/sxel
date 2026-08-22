@@ -112,7 +112,7 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 					continue
 				}
 				margin := time.Duration(float64(pl.Sleep) * 0.7 * float64(time.Second))
-				if elapsed-baseTime >= margin {
+				if elapsed-baseTime >= margin && confirmCmdiDelay(client, cfg, testURL, baseTime, margin) {
 					results = append(results, core.ScanResult{
 						Type: "Command Injection (Blind/Time-Based)",
 						URL:  testURL, Method: "GET", Parameter: param,
@@ -211,17 +211,18 @@ func ScanCmdInjection(client *http.Client, cfg *core.Config, target core.CrawlRe
 						continue
 					}
 					margin := time.Duration(float64(pl.Sleep) * 0.7 * float64(time.Second))
-					if elapsed-baseTime >= margin {
-						results = append(results, core.ScanResult{
-							Type: "Command Injection via core.Form (Blind/Time-Based)",
-							URL:  form.Action, Method: form.Method, Parameter: inp.Name,
-							Payload: pl.Payload, Severity: "CRITICAL",
-							Evidence:  fmt.Sprintf("delay %v >= margin %v [%s] HTTP=%d", elapsed.Round(time.Millisecond), margin, pl.OS, status),
-							Timestamp: time.Now(),
-						})
-						output.VulnInline("CMDI-FORM-BLIND", "%s %s input=%s delay=%v\n", form.Method, form.Action, inp.Name, elapsed.Round(time.Millisecond))
-						break CMDiFormTime
+					if !(elapsed-baseTime >= margin) || !confirmFormDelay(client, cfg, form, inp.Name, pl.Payload, baseTime, margin) {
+						continue
 					}
+					results = append(results, core.ScanResult{
+						Type: "Command Injection via core.Form (Blind/Time-Based)",
+						URL:  form.Action, Method: form.Method, Parameter: inp.Name,
+						Payload: pl.Payload, Severity: "CRITICAL",
+						Evidence:  fmt.Sprintf("delay %v >= margin %v [%s] HTTP=%d", elapsed.Round(time.Millisecond), margin, pl.OS, status),
+						Timestamp: time.Now(),
+					})
+					output.VulnInline("CMDI-FORM-BLIND", "%s %s input=%s delay=%v\n", form.Method, form.Action, inp.Name, elapsed.Round(time.Millisecond))
+					break CMDiFormTime
 				}
 			}
 		}
@@ -238,6 +239,37 @@ func containsResultForParam(results []core.ScanResult, typ, rawURL, param string
 		}
 	}
 	return false
+}
+
+// confirmCmdiDelay re-sends a timed GET payload once. Both runs must show the
+// delay (full margin on the first probe, half margin on the confirm pass) so
+// a single network jitter spike cannot produce a CRITICAL finding.
+func confirmCmdiDelay(client *http.Client, cfg *core.Config, testURL string, baseTime, margin time.Duration) bool {
+	t0 := time.Now()
+	_, _, err := core.DoGET(client, cfg, testURL)
+	if err != nil {
+		return false
+	}
+	return time.Since(t0)-baseTime >= margin/2
+}
+
+func confirmFormDelay(client *http.Client, cfg *core.Config, form core.Form, input, payload string, baseTime, margin time.Duration) bool {
+	t0 := time.Now()
+	var err error
+	if form.Method == "POST" {
+		d := core.FormDefaults(form)
+		d.Set(input, payload)
+		_, _, err = core.DoPOST(client, cfg, form.Action, d)
+	} else {
+		d := core.FormDefaults(form)
+		d.Set(input, payload)
+		u, _ := core.SetFormParams(form.Action, d)
+		_, _, err = core.DoGET(client, cfg, u)
+	}
+	if err != nil {
+		return false
+	}
+	return time.Since(t0)-baseTime >= margin/2
 }
 
 func containsResultForInput(results []core.ScanResult, typ, action, input string) bool {

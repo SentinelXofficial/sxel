@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"io"
 	"net/http"
 	"sync"
 
@@ -124,6 +125,9 @@ func ExtractResponseHeaders(client *http.Client, cfg *core.Config, targetURL str
 	if err != nil {
 		return nil
 	}
+	// Drain a small amount before closing so keep-alive connections can be
+	// reused instead of torn down.
+	io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 	resp.Body.Close()
 	headers := make(map[string]string)
 	for k, vals := range resp.Header {

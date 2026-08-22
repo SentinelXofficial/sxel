@@ -199,7 +199,9 @@ func ScanDirsV2(client *http.Client, cfg *core.Config, target string, opts DirSc
 							select {
 							case jobs <- job{base: sub, path: w, depth: j.depth - 1}:
 							default:
-								producerWG.Done()
+								go func(w string) {
+									jobs <- job{base: sub, path: w, depth: j.depth - 1}
+								}(w)
 							}
 						}
 					}
@@ -215,8 +217,7 @@ func ScanDirsV2(client *http.Client, cfg *core.Config, target string, opts DirSc
 			}
 		}()
 	}
-	producerWG.Add(2)
-	jobs <- job{base: baseStr, path: "", depth: opts.Depth + 1}
+	producerWG.Add(1)
 	go func() {
 		producerWG.Wait()
 		close(done)
@@ -289,18 +290,26 @@ func dirSeverity(status int, rawURL string) string {
 		"admin", "shell.php", "cmd.php", "phpinfo", "actuator",
 		"credentials", "password", ".htpasswd", "web.config",
 	}
+	isSensitive := false
 	for _, kw := range sensKeywords {
 		if strings.Contains(pathLow, kw) {
-			return "HIGH"
+			isSensitive = true
+			break
 		}
 	}
 	switch {
 	case status == 200:
+		if isSensitive {
+			return "HIGH"
+		}
 		return "MEDIUM"
+	case status == 403:
+		if isSensitive {
+			return "MEDIUM"
+		}
+		return "LOW"
 	case status == 301 || status == 302 || status == 307:
 		return "INFO"
-	case status == 403:
-		return "LOW"
 	default:
 		return "INFO"
 	}
@@ -435,5 +444,8 @@ func loadWordlist(path string) ([]string, error) {
 	if len(lines) == 0 {
 		return BuiltinWordlist, nil
 	}
-	return lines, sc.Err()
+	if err := sc.Err(); err != nil {
+		output.Warn("wordlist %q: partial read (%v) — using %d loaded entries", path, err, len(lines))
+	}
+	return lines, nil
 }

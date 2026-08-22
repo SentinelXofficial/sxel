@@ -41,7 +41,10 @@ func (c *Crawler) jsRender(pageURL string) ([]string, []core.Form) {
 	var dom string
 	err := chromedp.Run(bctx,
 		chromedp.Navigate(pageURL),
-		chromedp.Sleep(2000*time.Millisecond),
+		// Wait for document load before sampling the DOM — a blind fixed
+		// sleep raced page rendering under load and made JS-discovery flaky.
+		chromedp.Poll(`document.readyState === "complete"`, nil, chromedp.WithPollingTimeout(15*time.Second)),
+		chromedp.Sleep(1500*time.Millisecond),
 		chromedp.OuterHTML("html", &dom, chromedp.ByQuery),
 	)
 	if err != nil {

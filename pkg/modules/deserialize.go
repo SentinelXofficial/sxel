@@ -104,7 +104,13 @@ func ScanDeserialize(client *http.Client, cfg *core.Config, target core.CrawlRes
 		}
 	}
 
-	allPayloads := append(phpDeserializePayloads, javaDeserializePayloads...)
+	// Build a fresh slice — appending into a package-level slice could
+	// overwrite shared backing storage once capacity exceeds length.
+	allPayloads := make([]deserializePayload, 0,
+		len(phpDeserializePayloads)+len(javaDeserializePayloads)+
+			len(pythonPicklePayloads)+len(dotnetDeserializePayloads))
+	allPayloads = append(allPayloads, phpDeserializePayloads...)
+	allPayloads = append(allPayloads, javaDeserializePayloads...)
 	allPayloads = append(allPayloads, pythonPicklePayloads...)
 	allPayloads = append(allPayloads, dotnetDeserializePayloads...)
 

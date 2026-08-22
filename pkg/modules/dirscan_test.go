@@ -147,6 +147,28 @@ func TestSensitiveFile(t *testing.T) {
 	}
 }
 
+func TestDirSeverityStatusAware(t *testing.T) {
+	cases := []struct {
+		status int
+		url    string
+		want   string
+	}{
+		{200, "http://t/.env", "HIGH"},
+		{200, "http://t/.git/config", "HIGH"},
+		{403, "http://t/.env", "MEDIUM"},
+		{403, "http://t/backup/", "MEDIUM"},
+		{200, "http://t/uploads", "MEDIUM"},
+		{403, "http://t/private", "LOW"},
+		{301, "http://t/.env", "INFO"},
+		{302, "http://t/old", "INFO"},
+	}
+	for _, c := range cases {
+		if got := dirSeverity(c.status, c.url); got != c.want {
+			t.Errorf("dirSeverity(%d, %q) = %s, want %s", c.status, c.url, got, c.want)
+		}
+	}
+}
+
 func TestContentCheckRegexes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "ghp_%s secret", strings.Repeat("A", 36))

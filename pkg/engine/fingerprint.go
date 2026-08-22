@@ -56,7 +56,7 @@ var serverTech = map[string]string{
 	"tomcat":     "Tomcat",
 	"jetty":      "Jetty",
 	"caddy":      "Caddy",
-	"liteSpeed":  "LiteSpeed",
+	"litespeed":  "LiteSpeed",
 }
 
 var apiPattern = regexp.MustCompile(`/(api|v[0-9]+|graphql|rest|rpc|query)(/|$)`)

@@ -355,58 +355,54 @@ func matchSigns(signs []TemplateSign, body string, resp *http.Response) bool {
 	}
 	var wordSigns, statusSigns []TemplateSign
 	for _, s := range signs {
-		if s.On == "status" {
+		if s.On == "status" || (s.On != "word" && len(s.Status) > 0) {
 			statusSigns = append(statusSigns, s)
 		} else {
 			wordSigns = append(wordSigns, s)
 		}
 	}
 
+	statusOK := evalStatusGroup(statusSigns, resp)
+
 	if len(wordSigns) > 0 {
-		wordNeed := "any"
-		for _, s := range wordSigns {
-			if s.Need == "all" {
-				wordNeed = "all"
-				break
-			}
-		}
-		statusOK := evalStatusGroup(statusSigns, resp)
 		matched := 0
 		for _, s := range wordSigns {
 			if matchWords(s, body, resp) {
 				matched++
-				if wordNeed == "any" {
-					return statusOK
-				}
 			}
 		}
-		return statusOK && wordNeed == "all" && matched == len(wordSigns)
+		if allSignsNeedAll(wordSigns) {
+			return statusOK && matched == len(wordSigns)
+		}
+		return statusOK && matched > 0
 	}
 
-	return evalStatusGroup(statusSigns, resp)
+	return statusOK
+}
+
+func allSignsNeedAll(signs []TemplateSign) bool {
+	for _, s := range signs {
+		if s.Need != "all" {
+			return false
+		}
+	}
+	return len(signs) > 0
 }
 
 func evalStatusGroup(statusSigns []TemplateSign, resp *http.Response) bool {
 	if len(statusSigns) == 0 {
 		return true
 	}
-	need := "any"
-	for _, s := range statusSigns {
-		if s.Need == "all" {
-			need = "all"
-			break
-		}
-	}
 	matched := 0
 	for _, s := range statusSigns {
 		if matchStatus(s, resp) {
 			matched++
-			if need == "any" {
-				return true
-			}
 		}
 	}
-	return need == "all" && matched == len(statusSigns)
+	if allSignsNeedAll(statusSigns) {
+		return matched == len(statusSigns)
+	}
+	return matched > 0
 }
 
 func matchStatus(sign TemplateSign, resp *http.Response) bool {

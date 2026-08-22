@@ -148,8 +148,14 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 				}
 			}
 
-			distTrue := baselineDistance(trueStatus, trueBody, baseline)
-			distFalse := baselineDistance(falseStatus, falseBody, baseline)
+			if trueStatus != baseline.Status || falseStatus != baseline.Status {
+				// A status change on either side (WAF block, error page,
+				// redirect) is not boolean evidence on its own — trusting it
+				// produced false positives, so skip this operator.
+				continue
+			}
+			distTrue := absInt(len(trueBody) - baseline.Length)
+			distFalse := absInt(len(falseBody) - baseline.Length)
 			if distTrue <= 150 && distFalse <= 150 {
 				continue
 			}
@@ -222,8 +228,11 @@ func ScanNoSQLi(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 						}
 					}
 
-					distTrue := baselineDistance(trueStatus, trueBody, baseline)
-					distFalse := baselineDistance(falseStatus, falseBody, baseline)
+					if trueStatus != baseline.Status || falseStatus != baseline.Status {
+						continue
+					}
+					distTrue := absInt(len(trueBody) - baseline.Length)
+					distFalse := absInt(len(falseBody) - baseline.Length)
 					if distTrue <= 150 && distFalse <= 150 {
 						continue
 					}
@@ -354,17 +363,6 @@ func buildNoSQLURL(rawURL, param, opSuffix, value string) (string, error) {
 	q.Set(param+opSuffix, value)
 	p.RawQuery = q.Encode()
 	return p.String(), nil
-}
-
-func baselineDistance(status int, body string, bl core.BaselineResult) int {
-	if bl.Status != 0 && status != bl.Status {
-		return 1 << 30
-	}
-	d := len(body) - bl.Length
-	if d < 0 {
-		d = -d
-	}
-	return d
 }
 
 func nosqlErrorEvidence(body string, bl core.BaselineResult) string {

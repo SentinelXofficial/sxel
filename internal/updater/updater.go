@@ -60,37 +60,56 @@ func normVersion(s string) string {
 	return s
 }
 
-func splitVersion(s string) (int64, string) {
+func splitVersion(s string) ([]int64, string) {
 	s = normVersion(s)
-	var digits []byte
-	for i := 0; i < len(s); i++ {
-		if s[i] >= '0' && s[i] <= '9' || s[i] == '.' {
-			digits = append(digits, s[i])
-		} else {
-			return parseNum(string(digits)), s[i:]
+	var segs []int64
+	for len(s) > 0 {
+		i := 0
+		for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+			i++
 		}
-	}
-	return parseNum(string(digits)), ""
-}
-
-func parseNum(digits string) int64 {
-	var n int64
-	for _, c := range digits {
-		if c >= '0' && c <= '9' {
+		if i == 0 {
+			break
+		}
+		n := int64(0)
+		for _, c := range s[:i] {
 			n = n*10 + int64(c-'0')
 		}
+		segs = append(segs, n)
+		if i < len(s) && s[i] == '.' {
+			s = s[i+1:]
+			continue
+		}
+		s = s[i:]
+		break
 	}
-	return n
+	return segs, s
+}
+
+func compareSegments(a, b []int64) int {
+	for i := 0; i < len(a) || i < len(b); i++ {
+		var x, y int64
+		if i < len(a) {
+			x = a[i]
+		}
+		if i < len(b) {
+			y = b[i]
+		}
+		if x > y {
+			return 1
+		}
+		if x < y {
+			return -1
+		}
+	}
+	return 0
 }
 
 func compareVersions(a, b string) int {
-	na, sa := splitVersion(a)
-	nb, sb := splitVersion(b)
-	if na > nb {
-		return 1
-	}
-	if na < nb {
-		return -1
+	as, sa := splitVersion(a)
+	bs, sb := splitVersion(b)
+	if cmp := compareSegments(as, bs); cmp != 0 {
+		return cmp
 	}
 	if sa != "" && strings.HasPrefix(sa, "-") && !strings.HasPrefix(sb, "-") {
 		return -1

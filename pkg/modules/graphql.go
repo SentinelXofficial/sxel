@@ -61,7 +61,10 @@ func ScanGraphQL(client *http.Client, cfg *core.Config, baseURL string) []core.S
   }
 }`
 		introBody, introStatus, err := gqlPostQuery(client, cfg, ep, introQuery)
-		if err == nil && introStatus == 200 && strings.Contains(introBody, `"__schema"`) {
+		// Hardened servers return HTTP 200 with an errors array that may
+		// echo the query text — require real schema data, not just the
+		// literal "__schema" string anywhere in the body.
+		if err == nil && introStatus == 200 && gqlHasSchemaData(introBody) {
 			results = append(results, core.ScanResult{
 				Type:      "GraphQL Introspection Enabled",
 				URL:       ep,
@@ -155,6 +158,29 @@ func ScanGraphQL(client *http.Client, cfg *core.Config, baseURL string) []core.S
 	}
 
 	return results
+}
+
+// gqlHasSchemaData verifies the response contains actual introspection schema
+// payload (data.__schema with queryType/types), not merely the echoed query or
+// an error message quoting it.
+func gqlHasSchemaData(body string) bool {
+	var parsed struct {
+		Data struct {
+			Schema *struct {
+				QueryType    *json.RawMessage  `json:"queryType"`
+				MutationType *json.RawMessage  `json:"mutationType"`
+				Types        []json.RawMessage `json:"types"`
+			} `json:"__schema"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+		return false
+	}
+	s := parsed.Data.Schema
+	if s == nil {
+		return false
+	}
+	return s.QueryType != nil || s.MutationType != nil || len(s.Types) > 0
 }
 
 func gqlEndpointConfirmed(body string, status int) bool {

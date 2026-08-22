@@ -27,7 +27,7 @@ func ScanGrpc(client *http.Client, cfg *core.Config, target core.CrawlResult) []
 
 	host := extractHostFromURL(target.URL)
 
-	baseURL := core.StripQuery(target.URL)
+	baseURL := strings.TrimRight(core.StripQuery(target.URL), "/")
 	for _, path := range grpcGatewayPaths {
 		testURL := baseURL + path
 		req, err := http.NewRequest("GET", testURL, nil)

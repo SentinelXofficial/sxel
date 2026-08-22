@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var titleRe = regexp.MustCompile(`(?i)<title[^>]*>(.*?)</title>`)
+var titleRe = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
 var tagRe = regexp.MustCompile(`(?s)<[^>]+>`)
 var spaceRe = regexp.MustCompile(`\s+`)
 

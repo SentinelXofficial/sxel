@@ -417,11 +417,33 @@ func runHTTP(args []string) {
 			mu.Unlock()
 			return
 		}
-		results, _, _ := scanTarget(&http.Client{Timeout: 30 * time.Second}, cfg, job.URL, false, templates, pocs, nil, nil, nil, 0, false)
+		// Use the scanner's client construction (TLS-skip, session jar,
+		// recorder, rate limiter) instead of a bare http.Client so API-
+		// triggered scans behave identically to CLI runs.
+		client := core.NewHTTPClient(cfg)
+		results, _, _ := scanTarget(client, cfg, job.URL, false, templates, pocs, nil, nil, nil, 0, false)
 		mu.Lock()
 		job.Findings = results
 		job.Status = "done"
 		job.Finished = time.Now()
+		// Evict finished jobs beyond a bounded window so the long-running
+		// API server does not grow without limit.
+		for len(jobs) > 200 {
+			var oldest string
+			var oldestT time.Time
+			for id, j := range jobs {
+				if j.Finished.IsZero() {
+					continue
+				}
+				if oldest == "" || j.Finished.Before(oldestT) {
+					oldest, oldestT = id, j.Finished
+				}
+			}
+			if oldest == "" {
+				break
+			}
+			delete(jobs, oldest)
+		}
 		mu.Unlock()
 		output.Success("scan %s done: %d finding(s)", job.ID, len(results))
 	}

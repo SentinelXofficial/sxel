@@ -87,8 +87,11 @@ func Authenticate(client *http.Client, cfg *core.Config, ac AuthConfig) (bool, e
 	if err != nil {
 		return false, fmt.Errorf("auth verification failed: %v", err)
 	}
+	if vStatus >= 400 {
+		return false, fmt.Errorf("auth verification returned HTTP %d — cannot confirm session", vStatus)
+	}
 
-	stillLogin := looksLikeLoginPage(vBody, userField, passField)
+	stillLogin := looksLikeLoginPage(vBody, userField, passField) && sameFormStillServed(vBody, verifyURL, action)
 	if stillLogin {
 		if cfg.Verbose {
 			output.Verbose("[auth] login page still served after POST — session may not be authenticated")
@@ -144,6 +147,20 @@ func looksLikeLoginPage(body, userField, passField string) bool {
 	hasPassInput := strings.Contains(low, "type=\"password\"") || strings.Contains(low, "type='password'")
 	hasLoginForm := strings.Contains(low, "<form") && (strings.Contains(low, "login") || strings.Contains(low, "signin") || strings.Contains(low, "sign-in"))
 	return hasPassInput && hasLoginForm
+}
+
+// sameFormStillServed reports whether the verify page still renders the login
+// form we just submitted (same resolved action). Dashboards that merely embed
+// a change-password form or "Login" nav links must not count as still-logged-
+// out.
+func sameFormStillServed(body, pageURL, submittedAction string) bool {
+	forms := ExtractForms(body, pageURL)
+	lf := pickLoginForm(forms, AuthConfig{})
+	if lf == nil {
+		return false
+	}
+	resolved := ResolveURL(mustParse(pageURL), lf.Action)
+	return strings.EqualFold(resolved, submittedAction)
 }
 
 func mustParse(raw string) *url.URL {

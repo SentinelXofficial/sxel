@@ -3,6 +3,7 @@ package modules
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/SentinelXofficial/sxel/pkg/core"
@@ -22,7 +23,7 @@ func ScanBreach(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 	}
 	redirectParams := []string{"redirect_uri", "redirect", "return_url", "RelayState", "SAMLRequest"}
 
-	baseURL := core.StripQuery(target.URL)
+	baseURL := strings.TrimRight(core.StripQuery(target.URL), "/")
 	for _, path := range oauthPaths {
 		for _, param := range redirectParams {
 			testURL := baseURL + path + "?" + param + "=https://evil.com"

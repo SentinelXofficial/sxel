@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/SentinelXofficial/sxel/internal/banner"
@@ -833,6 +835,9 @@ Examples:
 		cfg.Checkpoint = core.NewCheckpoint(*checkpointFile)
 	}
 
+	stopSig := installSignalFlush(cfg.Checkpoint)
+	defer stopSig()
+
 	start := time.Now()
 
 	printModuleSummary(cfg)
@@ -982,6 +987,7 @@ Examples:
 		allResults = append(resumeResults, allResults...)
 	}
 
+	cfg.Checkpoint.Flush()
 	cfg.Checkpoint.Delete()
 
 	allResults = dedupResults(allResults)
@@ -1038,6 +1044,28 @@ Examples:
 		} else {
 			output.Success("webhook delivered (%s)", *webhookType)
 		}
+	}
+}
+
+// installSignalFlush flushes the checkpoint when the scan is interrupted
+// (SIGINT/SIGTERM) so findings from the last seconds are not lost. The
+// returned stop func detaches the handler.
+func installSignalFlush(cp *core.CheckpointState) (stop func()) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-sigCh:
+			output.Warn("interrupt received — flushing checkpoint before exit")
+			cp.Flush()
+			os.Exit(130)
+		case <-done:
+		}
+	}()
+	return func() {
+		signal.Stop(sigCh)
+		close(done)
 	}
 }
 

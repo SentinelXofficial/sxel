@@ -221,7 +221,8 @@ func testTETE(client *http.Client, cfg *core.Config, host, targetURL string, par
 			Parameter: "Transfer-Encoding (obfuscation)",
 			Payload:   "TE.TE: chunked + identity obfuscation",
 			Severity:  "CRITICAL",
-			Evidence:  "Server processed the obfuscated TE sequence — %d responses for 1 request; a TE.TE desynchronisation is possible when front-end and back-end select different transfer codings",
+			Evidence: fmt.Sprintf("Server processed the obfuscated TE sequence — %d responses for 1 request; a TE.TE desynchronisation is possible when front-end and back-end select different transfer codings",
+				responseCount(resp1)),
 			Timestamp: time.Now(),
 		}
 	}

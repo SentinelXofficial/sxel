@@ -77,7 +77,7 @@ func (c *CheckpointState) MarkScanned(u string, findings []ScanResult) {
 }
 
 func (c *CheckpointState) Flush() {
-	if c == nil || !c.dirty {
+	if c == nil {
 		return
 	}
 	c.mu.Lock()

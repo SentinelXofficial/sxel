@@ -2,6 +2,7 @@ package report
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -128,7 +129,7 @@ func WriteSARIF(path string, findings []Finding, toolVersion string) error {
 			Message: sarifText{Text: msg},
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysicalLocation{
-					ArtifactLocation: sarifArtifactLocation{URI: f.URL},
+					ArtifactLocation: sarifArtifactLocation{URI: sarifURI(f.URL)},
 					Region:           sarifRegion{StartLine: 1},
 				},
 			}},
@@ -162,4 +163,25 @@ func WriteSARIF(path string, findings []Finding, toolVersion string) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0o644)
+}
+
+// sarifURI re-serializes a URL so the SARIF artifactLocation.uri is a valid
+// RFC 3986 URI (escaped path/query). Falls back to the raw input when it
+// cannot be parsed.
+func sarifURI(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	if u.Host == "" {
+		return raw
+	}
+	out := u.Scheme + "://" + u.Host + u.EscapedPath()
+	if u.RawQuery != "" {
+		out += "?" + u.RawQuery
+	}
+	if u.Fragment != "" {
+		out += "#" + u.Fragment
+	}
+	return out
 }

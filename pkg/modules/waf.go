@@ -119,8 +119,13 @@ func evalWAFMatch(m wafMatch, resp *http.Response, body, cookieJar string) (bool
 			}
 		}
 	case "cookie":
-		if cookieJar != "" && wafCompile(m.Pattern).MatchString(cookieJar) {
-			return true, fmt.Sprintf("cookie %s", m.Pattern)
+		if cookieJar == "" {
+			break
+		}
+		for _, line := range strings.Split(cookieJar, "\n") {
+			if line != "" && wafCompile(m.Pattern).MatchString(line) {
+				return true, fmt.Sprintf("cookie %s", m.Pattern)
+			}
 		}
 	case "content":
 		if body != "" && wafCompile(m.Pattern).MatchString(body) {

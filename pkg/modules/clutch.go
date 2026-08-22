@@ -27,8 +27,12 @@ func ScanClutch(client *http.Client, cfg *core.Config, target core.CrawlResult) 
 		}
 
 		burstSize := 20
-		if cfg.Threads > 0 && cfg.Threads < burstSize {
-			burstSize = cfg.Threads * 4
+		if cfg.Threads > 0 {
+			// Scale down only — never let a small --threads value produce a
+			// burst LARGER than the default.
+			if scaled := cfg.Threads * 4; scaled < burstSize {
+				burstSize = scaled
+			}
 		}
 
 		fmt.Printf("  [CLUTCH] ⚠ Sending %d concurrent submissions to %s — may create real data on target\n", burstSize, action)

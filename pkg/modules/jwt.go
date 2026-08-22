@@ -328,7 +328,20 @@ func testJWTToken(
 		req.Header.Set("Authorization", "Bearer "+modToken)
 	}
 
-	resp, err := client.Do(req)
+	// Use a jar-less clone: the session jar would replay the original cookie
+	// alongside our modified Cookie header (duplicate names → ambiguous
+	// server behavior) and keep no-auth baselines authenticated.
+	noJar := &http.Client{
+		Timeout:   client.Timeout,
+		Transport: client.Transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		},
+	}
+	resp, err := noJar.Do(req)
 	if err != nil {
 		return nil
 	}

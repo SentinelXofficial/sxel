@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -208,6 +209,13 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.rc.Do(rreq)
 }
 
+func (t *retryTransport) Unwrap() http.RoundTripper {
+	if t.rc != nil && t.rc.HTTPClient != nil {
+		return t.rc.HTTPClient.Transport
+	}
+	return nil
+}
+
 type limiterTransport struct {
 	rt  http.RoundTripper
 	cfg *Config
@@ -218,9 +226,13 @@ func (t *limiterTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return t.rt.RoundTrip(req)
 }
 
+func (t *limiterTransport) Unwrap() http.RoundTripper { return t.rt }
+
 type decompressTransport struct {
 	rt http.RoundTripper
 }
+
+func (t *decompressTransport) Unwrap() http.RoundTripper { return t.rt }
 
 func (t *decompressTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := t.rt.RoundTrip(req)
@@ -246,6 +258,27 @@ func TLSClientConfigFor(cfg *Config) *tls.Config {
 		tc.Certificates = []tls.Certificate{cert}
 	}
 	return tc
+}
+
+// BaseTransportFor unwraps the scanner middleware (recorder/retry/limiter/
+// decompress) and returns the underlying *http.Transport, or nil if the
+// client's chain does not terminate in one.
+func BaseTransportFor(c *http.Client) *http.Transport {
+	if c == nil {
+		return nil
+	}
+	rt := c.Transport
+	for i := 0; i < 8 && rt != nil; i++ {
+		if t, ok := rt.(*http.Transport); ok {
+			return t
+		}
+		u, ok := rt.(interface{ Unwrap() http.RoundTripper })
+		if !ok {
+			return nil
+		}
+		rt = u.Unwrap()
+	}
+	return nil
 }
 
 func NewHTTPClient(cfg *Config) *http.Client {
@@ -286,6 +319,12 @@ func NewHTTPClient(cfg *Config) *http.Client {
 		Timeout:         timeoutDur,
 		NoAdjustTimeout: true,
 		CheckRetry: func(_ context.Context, resp *http.Response, err error) (bool, error) {
+			if errors.Is(err, ErrRateLimited) {
+				return false, nil
+			}
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return false, err
+			}
 			if err != nil {
 				return true, nil
 			}

@@ -749,7 +749,11 @@ func toBool(v interface{}) bool {
 	case int:
 		return t != 0
 	case string:
-		return t != ""
+		switch strings.ToLower(strings.TrimSpace(t)) {
+		case "", "false", "0", "no", "off", "null", "nil", "none":
+			return false
+		}
+		return true
 	}
 	return false
 }

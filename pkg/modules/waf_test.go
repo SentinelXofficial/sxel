@@ -64,6 +64,16 @@ func TestAutoDetectWAF(t *testing.T) {
 			w.Header().Set("Server", "AkamaiGHost")
 			fmt.Fprint(w, "ok")
 		}, "Kona SiteDefender"},
+		{"incapsula multi-cookie second matches", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Set-Cookie", "visid_incap_123=abc; Path=/")
+			w.Header().Add("Set-Cookie", "incap_ses_456=def; Path=/")
+			fmt.Fprint(w, "ok")
+		}, "Incapsula"},
+		{"bigip apm dual cookie", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Set-Cookie", "LastMRH_Session=xyz; Path=/")
+			w.Header().Add("Set-Cookie", "MRHSession=abc; Path=/")
+			fmt.Fprint(w, "ok")
+		}, "BIG-IP AP Manager"},
 		{"kemp compound", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-ServedBy", "KEMP-LM")
 			w.WriteHeader(403)

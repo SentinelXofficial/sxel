@@ -211,8 +211,10 @@ func detectUploadSuccess(resp *http.Response, body, filename, baseURL string, cl
 			fileURL := engine.ResolveURL(base, loc)
 			accStatus := 0
 			if fileURL != "" {
-				accBody, accStatus, err := core.DoGET(client, cfg, fileURL)
-				if err == nil && accStatus == 200 {
+				var accBody string
+				var fetchErr error
+				accBody, accStatus, fetchErr = core.DoGET(client, cfg, fileURL)
+				if fetchErr == nil && accStatus == 200 {
 					if strings.Contains(accBody, "<?php") || strings.Contains(accBody, "<%") {
 						return true, fmt.Sprintf("redirect to %s — file is accessible and contains server-side code (HTTP %d)", fileURL, accStatus), true
 					}

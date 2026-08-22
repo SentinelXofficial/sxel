@@ -179,6 +179,7 @@ func (c *Crawler) Crawl(startURL string) []core.CrawlResult {
 	}
 	head := 0
 	active := 0
+	inFlight := make(map[string]bool)
 
 	for head < len(queue) || active > 0 {
 		for active < workers && head < len(queue) {
@@ -196,6 +197,7 @@ func (c *Crawler) Crawl(startURL string) []core.CrawlResult {
 			if c.cfg.Verbose {
 				output.Verbose("[crawl] %s", item.u)
 			}
+			inFlight[item.u] = true
 			jobs <- job{u: item.u}
 			active++
 		}
@@ -206,6 +208,7 @@ func (c *Crawler) Crawl(startURL string) []core.CrawlResult {
 
 		d := <-resCh
 		active--
+		delete(inFlight, d.j.u)
 		if d.err != nil {
 			if c.cfg.Verbose {
 				output.Verbose("[crawl-err] %v", d.err)
@@ -253,12 +256,15 @@ func (c *Crawler) Crawl(startURL string) []core.CrawlResult {
 			head = 0
 		}
 		if len(c.visited) > 100000 {
-			nv := make(map[string]bool, len(queue)-head+len(results))
+			nv := make(map[string]bool, len(queue)-head+len(results)+len(inFlight))
 			for _, q := range queue[head:] {
 				nv[q.u] = true
 			}
 			for _, r := range results {
 				nv[r.URL] = true
+			}
+			for u := range inFlight {
+				nv[u] = true
 			}
 			c.visited = nv
 			if c.cfg.Verbose {

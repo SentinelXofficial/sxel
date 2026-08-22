@@ -31,6 +31,11 @@ func ReadBody(r io.Reader) string {
 	return string(b)
 }
 
+// ErrRateLimited is returned by do() after repeated HTTP 429 responses. The
+// retryablehttp CheckRetry treats it as terminal so a rate-limited target is
+// not hammered with multiplied retry layers.
+var ErrRateLimited = fmt.Errorf("target rate limited: retries exhausted")
+
 func do(client *http.Client, cfg *Config, req *http.Request) (*http.Response, error) {
 	if client == nil {
 		client = &http.Client{}
@@ -65,7 +70,7 @@ func do(client *http.Client, cfg *Config, req *http.Request) (*http.Response, er
 			}
 		}
 	}
-	return nil, fmt.Errorf("target rate limited: retries exhausted")
+	return nil, ErrRateLimited
 }
 
 func DoGET(client *http.Client, cfg *Config, rawURL string) (string, int, error) {

@@ -1,6 +1,10 @@
 package poc
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+	"time"
+)
 
 func TestEvalComparisons(t *testing.T) {
 	cases := map[string]bool{
@@ -62,5 +66,37 @@ func TestEvalRuleChain(t *testing.T) {
 	}
 	if !got {
 		t.Error("r0() && status==200 should be true")
+	}
+}
+
+func TestNilRuleReturnsErrorNotPanic(t *testing.T) {
+	p := &PoC{
+		Name:       "nil-rule",
+		Transport:  "http",
+		Expression: "true",
+		Rules:      map[string]*Rule{"r0": nil},
+	}
+	for _, e := range p.Lint() {
+		if e == `rule "r0": empty request` {
+			return
+		}
+	}
+	t.Fatalf("Lint should flag the nil rule, got %v", p.Lint())
+
+	p2 := &PoC{
+		Name:       "nil-rule-run",
+		Transport:  "http",
+		Expression: "true",
+		Rules:      map[string]*Rule{"r0": nil},
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Run panicked on nil rule: %v", r)
+		}
+	}()
+	_, _, err := p2.Run(client, "http://127.0.0.1:1")
+	if err == nil {
+		t.Fatal("Run should return an error for a nil rule")
 	}
 }

@@ -129,6 +129,10 @@ func (p *PoC) Lint() []string {
 		errs = append(errs, "missing 'expression'")
 	}
 	for name, r := range p.Rules {
+		if r == nil {
+			errs = append(errs, fmt.Sprintf("rule %q: empty request", name))
+			continue
+		}
 		if r.Request.Method == "" && r.Request.Path == "" {
 			errs = append(errs, fmt.Sprintf("rule %q: empty request", name))
 		}
@@ -157,6 +161,9 @@ func (p *PoC) Run(client *http.Client, baseURL string) (bool, *Response, error) 
 	var firstMatched string
 	for _, name := range names {
 		r := p.Rules[name]
+		if r == nil {
+			return false, nil, fmt.Errorf("rule %q: empty (nil) rule", name)
+		}
 		match, resp, rerr := p.runRule(client, baseURL, r, set)
 		if rerr != nil {
 			return false, nil, rerr
@@ -248,11 +255,15 @@ func (p *PoC) runRule(client *http.Client, baseURL string, r *Rule, set map[stri
 			TLSHandshakeTimeout:   10 * time.Second,
 			ResponseHeaderTimeout: 15 * time.Second,
 		}
-		if cfg := client.Transport; cfg != nil {
-			if t, ok := cfg.(*http.Transport); ok {
-				transport.Proxy = t.Proxy
-				transport.TLSClientConfig = t.TLSClientConfig
-				transport.DialContext = t.DialContext
+		if base := core.BaseTransportFor(client); base != nil {
+			if base.Proxy != nil {
+				transport.Proxy = base.Proxy
+			}
+			if base.TLSClientConfig != nil {
+				transport.TLSClientConfig = base.TLSClientConfig.Clone()
+			}
+			if base.DialContext != nil {
+				transport.DialContext = base.DialContext
 			}
 		}
 		resp, err = (&http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(r *http.Request, v []*http.Request) error { return http.ErrUseLastResponse }}).Do(req)

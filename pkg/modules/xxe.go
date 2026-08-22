@@ -18,22 +18,44 @@ type xxePayload struct {
 	Markers []string
 }
 
+var plainHostnameRe = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9_.-]{0,61}[a-zA-Z0-9])?$`)
+
+var (
+	xmlTagRe     = regexp.MustCompile(`(?s)<[^>]*>`)
+	xmlCDATARe   = regexp.MustCompile(`(?:<!\[CDATA\[|\]\]>)`)
+	xmlCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
+	b64TokenRe   = regexp.MustCompile(`[A-Za-z0-9+/]{8,}={0,2}`)
+)
+
+// soleHostnameToken extracts the page text stripped of markup and returns it
+// only when the entire remaining content is a bare hostname. This avoids
+// matching arbitrary <tag>word</tag> fragments in ordinary XML responses.
+func soleHostnameToken(body string) string {
+	txt := xmlCDATARe.ReplaceAllString(body, "")
+	txt = xmlCommentRe.ReplaceAllString(txt, "")
+	txt = xmlTagRe.ReplaceAllString(txt, "")
+	txt = strings.TrimSpace(txt)
+	if txt != "" && len(txt) <= 63 && plainHostnameRe.MatchString(txt) {
+		return txt
+	}
+	return ""
+}
+
+// base64HostnameToken finds a standalone base64 blob whose decoded value is a
+// bare hostname (some endpoints return file:// reads base64-encoded).
 func base64HostnameToken(body string) string {
-	b64 := regexp.MustCompile(`[A-Za-z0-9+/]{8,}={0,2}`)
-	for _, tok := range b64.FindAllString(body, -1) {
+	for _, tok := range b64TokenRe.FindAllString(body, -1) {
 		dec, err := base64.StdEncoding.DecodeString(tok)
 		if err != nil {
 			continue
 		}
 		s := strings.TrimSpace(string(dec))
-		if len(s) >= 2 && len(s) <= 63 && hostnameTokenRe.MatchString(s) {
+		if len(s) >= 2 && len(s) <= 63 && plainHostnameRe.MatchString(s) {
 			return s
 		}
 	}
 	return ""
 }
-
-var hostnameTokenRe = regexp.MustCompile(`(?is)<\s*/?\s*[a-z0-9:_-]{1,40}\s*>\s*([a-z0-9][a-z0-9_.-]{0,62})\s*</`)
 
 var xxePayloads = []xxePayload{
 	{
@@ -153,22 +175,16 @@ func ScanXXE(client *http.Client, cfg *core.Config, target core.CrawlResult) []c
 				}
 
 				if len(pl.Markers) == 0 {
-					if m := hostnameTokenRe.FindStringSubmatch(body); len(m) == 2 && !strings.Contains(strings.ToLower(baselineBody), m[1]) {
-						results = append(results, core.ScanResult{
-							Type: "XXE (XML External Entity Injection)",
-							URL:  endpoint, Method: "POST", Parameter: ct,
-							Payload: pl.Label, Severity: "CRITICAL",
-							Evidence:  fmt.Sprintf("/etc/hostname returned %q (HTTP %d)", m[1], status),
-							Timestamp: time.Now(),
-						})
-						break XXECTLoop
+					tok := soleHostnameToken(body)
+					if tok == "" {
+						tok = base64HostnameToken(body)
 					}
-					if tok := base64HostnameToken(body); tok != "" && !strings.Contains(strings.ToLower(baselineBody), tok) {
+					if tok != "" && !strings.Contains(strings.ToLower(baselineBody), strings.ToLower(tok)) {
 						results = append(results, core.ScanResult{
 							Type: "XXE (XML External Entity Injection)",
 							URL:  endpoint, Method: "POST", Parameter: ct,
 							Payload: pl.Label, Severity: "CRITICAL",
-							Evidence:  fmt.Sprintf("/etc/hostname (base64) returned %q (HTTP %d)", tok, status),
+							Evidence:  fmt.Sprintf("/etc/hostname content %q returned (HTTP %d)", tok, status),
 							Timestamp: time.Now(),
 						})
 						break XXECTLoop

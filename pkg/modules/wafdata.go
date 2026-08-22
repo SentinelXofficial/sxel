@@ -701,11 +701,6 @@ var wafSignatures = []wafSignature{
 	}},
 	{Vendor: `BIG-IP AP Manager`, Manufacturer: `F5 Networks`, Groups: [][]wafMatch{
 		[]wafMatch{
-			wafMatch{Kind: `cookie`, Name: ``, Pattern: `^F5_fullWT`},
-		},
-	}},
-	{Vendor: `BIG-IP AP Manager`, Manufacturer: `F5 Networks`, Groups: [][]wafMatch{
-		[]wafMatch{
 			wafMatch{Kind: `cookie`, Name: ``, Pattern: `^F5_HT_shrinked`},
 		},
 	}},
@@ -1002,11 +997,6 @@ var wafSignatures = []wafSignature{
 	{Vendor: `KS-WAF`, Manufacturer: `KnownSec`, Groups: [][]wafMatch{
 		[]wafMatch{
 			wafMatch{Kind: `content`, Name: ``, Pattern: `/ks[-_]waf[-_]error\.png`},
-		},
-	}},
-	{Vendor: `Kona SiteDefender`, Manufacturer: `Akamai`, Groups: [][]wafMatch{
-		[]wafMatch{
-			wafMatch{Kind: `header`, Name: `Server`, Pattern: `AkamaiGHost`},
 		},
 	}},
 	{Vendor: `Kona SiteDefender`, Manufacturer: `Akamai`, Groups: [][]wafMatch{
@@ -1809,7 +1799,7 @@ var wafSignatures = []wafSignature{
 	{Vendor: `ThreatX`, Manufacturer: `A10 Networks`, Groups: [][]wafMatch{
 		[]wafMatch{
 			wafMatch{Kind: `header`, Name: `X-Request-Id`, Pattern: `.*`},
-			wafMatch{Kind: `content`, Name: ``, Pattern: `^Forbidden - ID: ([a-fA-F0-9]{32})$`},
+			wafMatch{Kind: `content`, Name: ``, Pattern: `Forbidden - ID: ([a-fA-F0-9]{32})`},
 			wafMatch{Kind: `status`, Name: `403`, Pattern: ``},
 		},
 	}},

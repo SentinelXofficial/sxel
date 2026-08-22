@@ -187,7 +187,13 @@ func ensureChromeOnce() string {
 	if _, err := os.Stat(bin); err == nil && readCachedChromeVersion(cache) == version {
 		return bin
 	}
-	tmpZip := filepath.Join(os.TempDir(), "sxel-headless-shell-"+version+".zip")
+	tmpf, err := os.CreateTemp("", "sxel-headless-shell-*.zip")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[!] js-crawl: temp file: %v\n", err)
+		return ""
+	}
+	tmpZip := tmpf.Name()
+	tmpf.Close()
 	defer os.Remove(tmpZip)
 	if err := downloadHeadlessShell(version, tmpZip); err != nil {
 		fmt.Fprintf(os.Stderr, "[!] js-crawl: download headless-shell %s failed: %v\n", version, err)

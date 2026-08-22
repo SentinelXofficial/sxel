@@ -89,7 +89,9 @@ func ParseSitemap(client *http.Client, cfg *core.Config, baseURL string) []strin
 		} `xml:"sitemap"`
 	}
 	var us URLSet
-	xml.Unmarshal([]byte(body), &us)
+	if err := xml.Unmarshal([]byte(body), &us); err != nil && cfg.Verbose {
+		output.Verbose("[discover] sitemap %s: malformed XML: %v", baseURL, err)
+	}
 	base, _ := url.Parse(baseURL)
 	seen := map[string]bool{}
 	var urls []string
@@ -137,7 +139,9 @@ func ParseSitemap(client *http.Client, cfg *core.Config, baseURL string) []strin
 			continue
 		}
 		var nestedUS URLSet
-		xml.Unmarshal([]byte(nestedBody), &nestedUS)
+		if err := xml.Unmarshal([]byte(nestedBody), &nestedUS); err != nil && cfg.Verbose {
+			output.Verbose("[discover] sitemap %s: malformed XML: %v", smLoc, err)
+		}
 		for _, u := range nestedUS.URLs {
 			addIfSameHost(u.Loc)
 		}
@@ -200,7 +204,11 @@ func ExtractJSEndpoints(client *http.Client, cfg *core.Config, pageURL string) [
 				if err != nil {
 					continue
 				}
-				full := base.ResolveReference(ref).String()
+				resolved := base.ResolveReference(ref)
+				if isStaticAsset(resolved) {
+					continue
+				}
+				full := resolved.String()
 				if full != "" && !seen[full] {
 					seen[full] = true
 					out = append(out, full)

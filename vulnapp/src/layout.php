@@ -25,7 +25,7 @@ function render_page(string $title, string $content): void
         '/' => 'Home',
         '/products' => 'Products',
         '/blog' => 'Blog',
-        '/tools/ping' => 'Tools',
+        '/tools' => 'Tools',
         '/upload' => 'Upload',
     ] as $path => $label) {
         $active = ($_SERVER['REQUEST_URI'] ?? '') === $path || str_starts_with($_SERVER['REQUEST_URI'] ?? '', $path . '?') || str_starts_with($_SERVER['REQUEST_URI'] ?? '', $path . '/');
